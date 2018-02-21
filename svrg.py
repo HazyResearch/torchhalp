@@ -79,7 +79,7 @@ class SVRG(torch.optim.SGD):
             # Reset t 
             self.state['t_iters'] = 0
             
-            print self._full_grad[0].norm(2)
+            # print self._full_grad[0].norm(2)
 
         # Calculate w_tilde gradient 
         for i, p in enumerate(self._params_prev):
@@ -109,4 +109,4 @@ class SVRG(torch.optim.SGD):
         self.state['t_iters'] += 1 
 
         # TODO(mleszczy): What do we want to return?
-        return d_p.cpu().numpy()
+        return p.data.cpu().numpy()
