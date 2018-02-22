@@ -31,7 +31,7 @@ class SynthDataset(data.Dataset):
 def main():
     n = 100
     n_features = 4
-    num_epochs = 100
+    num_epochs = 1000
     T = n 
 
     torch.manual_seed(6)
@@ -51,7 +51,7 @@ def main():
     model = build_model(n_features)
 
     loss = torch.nn.MSELoss(size_average=True)
-    svrg = SVRG(model.parameters(), T=T, data_loader=train_loader, lr=1e-4)
+    svrg = SVRG(model.parameters(), T=T, data_loader=train_loader, lr=1e-3)
     batch_size = 1
 
     dist_to_optimum = []
@@ -60,12 +60,9 @@ def main():
         for i, (data, target) in enumerate(train_loader):  
             data = Variable(data, requires_grad=False)
             target = Variable(target, requires_grad=False)
-            def closure(parameters=None, data=data, target=target): 
-                param_num= 0 
-                for child in model.children():
-                    for name, p in child.named_parameters():
-                        child.register_parameter(name, parameters[param_num])
-                        param_num+=1
+
+            # Need to add this function 
+            def closure(data=data, target=target): 
                 output = model(data)
                 cost = loss(output, target)
                 cost.backward()

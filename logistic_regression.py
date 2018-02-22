@@ -39,7 +39,7 @@ class SynthDataset(data.Dataset):
         return self.data[idx], self.labels[idx]
 
 def main():
-    n = 500
+    n = 100
     n_features = 4    
     n_classes = 3
     iters = n*10
@@ -72,7 +72,7 @@ def main():
     # Can also change batch_size of dataloader here 
     train_loader = torch.utils.data.DataLoader(synth_dataset)
 
-    w = np.zeros((n_classes, n_features))
+    w = np.random.uniform(0, 0.1, (n_classes, n_features))
 
     model = build_model(n_features, n_classes, initial_value=w)
 
@@ -82,12 +82,8 @@ def main():
         model_prev.cuda() 
         loss = loss.cuda()
 
-
     svrg = SVRG(model.parameters(), lr=0.1, T=T, data_loader=train_loader)
     dist_to_optimum = [] 
-    # seeded again to match python implementation
-    np.random.seed(6)
-    random.seed(6)
 
     num_epochs = 100
     iters = 0
@@ -98,21 +94,7 @@ def main():
 
             # This closure method would have to be copied into any program that wants to 
             # use SVRG :/ 
-            def closure(parameters=None, data=data, target=target):
-                # Copy pointers to the parameters into the model
-
-                # NOTE(mleszczy): Registering parameters at the top level doesn't seem to work
-                # print id(model.linear.weight)
-
-                # Copy pointers to current parameters into model 
-                param_num= 0 
-                for child in model.children():
-                    for name, p in child.named_parameters():
-                        child.register_parameter(name, parameters[param_num])
-                        param_num+=1
-                        # TODO(mleszczy): Assert against supporting multiple levels of children rn
-                # print id(parameters[0])
-                # print id(model.linear.weight)
+            def closure(data=data, target=target):
                 output = model(data)
                 cost = loss(output, target)
                 cost.backward()
