@@ -75,7 +75,6 @@ class SVRG(torch.optim.SGD):
 
             # Accumulate gradients
             for i, (data, target) in enumerate(self.data_loader):
-                data, target = Variable(data), Variable(target)
                 closure(data, target)
             
             # Adjust summed gradients by num_iterations accumulated over 
@@ -106,10 +105,8 @@ class SVRG(torch.optim.SGD):
         # We don't need to copy out these gradients
 
         for p, d_p0, fg in zip(self._params, self._prev_grad, self._full_grad):
-            d_p = p.grad.data
-
             # Adjust gradient in place 
-            d_p -= (d_p0 - fg) 
+            p.grad.data -= (d_p0 - fg) 
 
             # Call optimizer update step 
             super(SVRG, self).step()

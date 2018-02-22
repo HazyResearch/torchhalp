@@ -10,6 +10,7 @@ import torch.utils.data as data
 import torch
 from torch.autograd import Variable
 from torch import optim
+import argparse 
 
 def build_model(n_features):
     model = torch.nn.Sequential()
@@ -29,14 +30,30 @@ class SynthDataset(data.Dataset):
         return self.data[idx], self.labels[idx]
 
 def main():
+    parser = argparse.ArgumentParser(description='Logistic regression')
+    parser.add_argument('--epochs', type=int, default=100, metavar='N',
+                        help='number of epochs to train (default: 100)')
+    parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
+                        help='learning rate (default: 0.1)')
+    parser.add_argument('--no-cuda', action='store_true', default=False,
+                        help='disables CUDA training')
+    parser.add_argument('--seed', type=int, default=1, metavar='S',
+                        help='random seed (default: 1)')
+    parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+                        help='how many batches to wait before logging training status')
+    args = parser.parse_args()
+    args.cuda = not args.no_cuda and torch.cuda.is_available()
+
+    torch.manual_seed(args.seed)
+    if args.cuda:
+        torch.cuda.manual_seed(args.seed)
+
     n = 100
     n_features = 4
     num_epochs = 1000
     T = n 
 
-    torch.manual_seed(6)
-    np.random.seed(6)
-
+    np.random.seed(args.seed)
     X, Y = datasets.make_regression(n_samples=n,
                                     n_features=n_features,
                                     noise=10,
@@ -49,20 +66,23 @@ def main():
     train_loader = torch.utils.data.DataLoader(synth_dataset)
 
     model = build_model(n_features)
+    if args.cuda:
+        model.cuda()
 
     loss = torch.nn.MSELoss(size_average=True)
-    svrg = SVRG(model.parameters(), T=T, data_loader=train_loader, lr=1e-3)
+    svrg = SVRG(model.parameters(), T=T, data_loader=train_loader, lr=args.lr)
     batch_size = 1
 
     dist_to_optimum = []
     iters = 0 
-    for e in range(num_epochs):
+    for e in range(args.epochs):
         for i, (data, target) in enumerate(train_loader):  
-            data = Variable(data, requires_grad=False)
-            target = Variable(target, requires_grad=False)
-
             # Need to add this function 
             def closure(data=data, target=target): 
+                data = Variable(data, requires_grad=False)
+                target = Variable(target, requires_grad=False)
+                if args.cuda:
+                    data, target = data.cuda(), target.cuda()
                 output = model(data)
                 cost = loss(output, target)
                 cost.backward()

@@ -8,14 +8,13 @@ import random
 # import matplotlib.pyplot as plt
 from sklearn import linear_model, datasets
 import copy 
+import argparse 
 
 import torch
 from torch.autograd import Variable
 from torch.nn import Parameter
 from torch import optim
 torch.set_printoptions(precision=10)
-
-cuda = False
 
 def build_model(input_dim, output_dim=1, initial_value=None):
     model = torch.nn.Sequential()
@@ -39,14 +38,31 @@ class SynthDataset(data.Dataset):
         return self.data[idx], self.labels[idx]
 
 def main():
+    parser = argparse.ArgumentParser(description='Logistic regression')
+    parser.add_argument('--epochs', type=int, default=10, metavar='N',
+                        help='number of epochs to train (default: 10)')
+    parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
+                        help='learning rate (default: 0.1)')
+    parser.add_argument('--no-cuda', action='store_true', default=False,
+                        help='disables CUDA training')
+    parser.add_argument('--seed', type=int, default=1, metavar='S',
+                        help='random seed (default: 1)')
+    parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+                        help='how many batches to wait before logging training status')
+    args = parser.parse_args()
+    args.cuda = not args.no_cuda and torch.cuda.is_available()
+
+    torch.manual_seed(args.seed)
+    if args.cuda:
+        torch.cuda.manual_seed(args.seed)
+
     n = 100
     n_features = 4    
     n_classes = 3
-    iters = n*10
-    K = iters / (n)
+    num_epochs = 100
     T = n
-    torch.manual_seed(6)
-    np.random.seed(6)
+
+    np.random.seed(args.seed)
     X,Y = datasets.make_classification(n_samples=n, 
                             n_features=n_features, 
                             n_informative=2, 
@@ -55,6 +71,7 @@ def main():
                             n_classes=n_classes, 
                             n_clusters_per_class=1)
 
+    # Calculate w_opt
     clf = linear_model.LogisticRegression(fit_intercept=False, 
         multi_class='multinomial', 
         solver='sag', 
@@ -63,51 +80,46 @@ def main():
         max_iter=10000, tol=1e-8)
     clf.fit(X, Y)
     w_opt = clf.coef_
+
     loss = torch.nn.CrossEntropyLoss(size_average=True)
 
     X = torch.from_numpy(X).float()
     Y = torch.from_numpy(Y).long()
     synth_dataset = SynthDataset(X, Y)
-
     # Can also change batch_size of dataloader here 
     train_loader = torch.utils.data.DataLoader(synth_dataset)
 
     w = np.random.uniform(0, 0.1, (n_classes, n_features))
-
     model = build_model(n_features, n_classes, initial_value=w)
 
-    # TODO(mleszczy): Add full cuda support 
-    if cuda: 
+    if args.cuda: 
         model.cuda() 
-        model_prev.cuda() 
-        loss = loss.cuda()
 
-    svrg = SVRG(model.parameters(), lr=0.1, T=T, data_loader=train_loader)
+    svrg = SVRG(model.parameters(), lr=args.lr, T=T, data_loader=train_loader)
     dist_to_optimum = [] 
-
-    num_epochs = 100
+    num_epochs = args.epochs
     iters = 0
     for e in range(num_epochs):
         for i, (data, target) in enumerate(train_loader): 
-            data = Variable(data, requires_grad=False)
-            target = Variable(target, requires_grad=False)
-
             # This closure method would have to be copied into any program that wants to 
             # use SVRG :/ 
             def closure(data=data, target=target):
+                data = Variable(data, requires_grad=False)
+                target = Variable(target, requires_grad=False)
+                if args.cuda:
+                    data, target = data.cuda(), target.cuda()
                 output = model(data)
                 cost = loss(output, target)
                 cost.backward()
                 return cost
 
             w = svrg.step(closure)
+
             dist = np.linalg.norm(w-w_opt)
             dist_to_optimum.append(dist)
             if iters % T == 0:
                 print("Iteration = %d, Dist_to_opt = %s" % (iters , dist))
             iters += 1 
-
-    print dist_to_optimum[-1]
     # plt.plot(range(iters), dist_to_optimum, label="SVRG")
     # plt.ylabel('Distance to Optimum')
     # plt.xlabel('Iterations')
