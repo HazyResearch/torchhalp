@@ -1,6 +1,7 @@
 from svrg import SVRG
 from logistic_regression import build_model, SynthDataset
 
+import pytest
 import numpy as np 
 import torch
 from torch.autograd import Variable
@@ -50,7 +51,6 @@ def baseline_svrg(x, y, w, lr, T=1, K=1, calc_gradient=None):
             w_prev_grad = calc_gradient(xi, yi, w_prev)
             adjusted_grad = w_grad - w_prev_grad + full_grad
             w = w - (lr*adjusted_grad) 
-            print w
     return w 
 
 def pytorch_svrg(x, y, w, lr, T, K=1, n_features=None, n_classes=1):
@@ -81,7 +81,6 @@ def pytorch_svrg(x, y, w, lr, T, K=1, n_features=None, n_classes=1):
             svrg_opt.step(closure)
             w = np.asarray([p.data.numpy() for p in
                 list(model.parameters())]).reshape(n_classes, n_features)
-            print w
     return w
 
 
@@ -89,9 +88,18 @@ def pytorch_svrg(x, y, w, lr, T, K=1, n_features=None, n_classes=1):
 # Tests 
 #========================================================================================
 
-# TODO(mleszczy): add sweeps 
-
-def test_linear_regress(n_samples=4, n_features=5, lr=0.1, K=2):
+@pytest.mark.parametrize("n_samples,n_features,lr,K",
+[   
+    (1,   1,   1, 1),
+    (1,   4, 0.1, 1),
+    (1,   4, 0.1, 2),
+    (10,  4, 0.1, 1),
+    (10,  4, 0.1, 1),
+    (10, 10, 0.1, 1),
+    (10, 10, 0.5, 1), 
+    (10, 10, 0.5, 10)
+])
+def test_linear_regress(n_samples, n_features, lr, K):
     x = np.random.rand(n_samples, n_features)
     y = np.random.uniform(0,1, size=(n_samples,))
     w = np.random.uniform(0, 0.1, (1, n_features))
@@ -100,7 +108,20 @@ def test_linear_regress(n_samples=4, n_features=5, lr=0.1, K=2):
     pytorch_value = pytorch_svrg(x, y, w, lr, T=n_samples, K=K, n_features=n_features)
     np.testing.assert_allclose(np_value, pytorch_value, rtol=1e-4)
 
-def test_logistic_regress(n_samples=4, n_features=5, n_classes=3, lr=0.1, K=2):
+@pytest.mark.parametrize("n_samples,n_features,n_classes,lr,K",
+[   
+    (1,  1,  3,   1, 1),
+    (1,  4,  3, 0.1, 1),
+    (1,  4,  3, 0.1, 2),
+    (10, 4,  3, 0.1, 1),
+    (10, 4,  3, 0.1, 1),
+    (10, 10, 3, 0.1, 1),
+    (10, 10, 3, 0.5, 1), 
+    (10, 10, 3, 0.5, 10),
+    (10, 10, 4, 0.5, 10),
+    (10, 10,10, 0.5, 10),
+])
+def test_logistic_regress(n_samples, n_features, n_classes, lr, K):
     x = np.random.rand(1, n_features)
     y = np.random.randint(0, n_classes, size=(1,))
     w = np.random.uniform(0, 0.1, (n_classes, n_features))
