@@ -89,7 +89,7 @@ def main():
     # Can also change batch_size of dataloader here 
     train_loader = torch.utils.data.DataLoader(synth_dataset)
 
-    w = np.random.uniform(0, 0.1, (n_classes, n_features))
+    w = np.random.uniform(0, 1, (n_classes, n_features))
     model = build_model(n_features, n_classes, initial_value=w)
 
     if args.cuda: 
@@ -106,6 +106,9 @@ def main():
             def closure(data=data, target=target):
                 data = Variable(data, requires_grad=False)
                 target = Variable(target, requires_grad=False)
+                print data.dim()
+                print target.dim()
+                print data, target 
                 if args.cuda:
                     data, target = data.cuda(), target.cuda()
                 output = model(data)
@@ -113,8 +116,10 @@ def main():
                 cost.backward()
                 return cost
 
-            w = svrg.step(closure)
+            svrg.step(closure)
 
+            # Performance metric: distance to optimum 
+            w = np.asarray([p.data.cpu().numpy() for p in list(model.parameters())])
             dist = np.linalg.norm(w-w_opt)
             dist_to_optimum.append(dist)
             if iters % T == 0:
