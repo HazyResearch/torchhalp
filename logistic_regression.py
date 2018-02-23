@@ -106,9 +106,6 @@ def main():
             def closure(data=data, target=target):
                 data = Variable(data, requires_grad=False)
                 target = Variable(target, requires_grad=False)
-                print data.dim()
-                print target.dim()
-                print data, target 
                 if args.cuda:
                     data, target = data.cuda(), target.cuda()
                 output = model(data)

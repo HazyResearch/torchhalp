@@ -70,9 +70,7 @@ class SVRG(torch.optim.SGD):
         assert len(self.param_groups) == 1
 
         # Calculate full gradient 
-        if self.state['t_iters'] == self.T:
-            print "here"
-            
+        if self.state['t_iters'] == self.T:            
             # Reset gradients before accumulating them 
             self._zero_grad()
 
@@ -91,7 +89,6 @@ class SVRG(torch.optim.SGD):
             for p, p0 in zip(self._curr_w, self._prev_w):
                 p0.copy_(p)
 
-            print "pytorch", self._full_grad 
             # Reset t 
             self.state['t_iters'] = 0
             
@@ -101,7 +98,6 @@ class SVRG(torch.optim.SGD):
         # Calculate prev_w gradient 
         closure()
         self._copy_grads_from_params(self._prev_grad)
-        print "prev", self._prev_grad
 
          # Copy w over to model parameters
         self._switch_weights_to_copy(self._curr_w)
@@ -111,7 +107,6 @@ class SVRG(torch.optim.SGD):
         # We don't need to copy out these gradients
 
         for p, d_p0, fg in zip(self._params, self._prev_grad, self._full_grad):
-            print "curr grad", p.grad.data
             # Adjust gradient in place 
             p.grad.data -= (d_p0 - fg) 
 
