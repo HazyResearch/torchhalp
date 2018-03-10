@@ -1,9 +1,10 @@
 from svrg import SVRG
+from halp import HALP
 
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import linear_model, datasets
-import argparse 
+import argparse
 
 import torch.utils.data as data
 import torch
@@ -12,7 +13,7 @@ from torch import optim
 
 class SynthDataset(data.Dataset):
     def __init__(self, data, labels):
-        self.data = data 
+        self.data = data
         self.labels = labels
 
     def __len__(self):
@@ -48,24 +49,24 @@ def main():
 
     n = args.n
     n_features = args.num_features
-    num_epochs = args.epochs 
-    T = args.T 
+    num_epochs = args.epochs
+    T = args.T
 
-    # Make synthetic dataset with sklearn  
+    # Make synthetic dataset with sklearn
     X, Y = datasets.make_regression(n_samples=n,
                                     n_features=n_features,
                                     noise=10,
                                     n_informative=1)
 
-    # Solve for optimal solution 
+    # Solve for optimal solution
     w_opt, _, _, _= np.linalg.lstsq(X, Y, rcond=None)
 
     X = torch.from_numpy(X).float()
-    Y = torch.from_numpy(Y).float().view(-1,1) 
+    Y = torch.from_numpy(Y).float().view(-1,1)
     synth_dataset = SynthDataset(X, Y)
     train_loader = torch.utils.data.DataLoader(synth_dataset)
 
-    # Create model 
+    # Create model
     model = torch.nn.Sequential()
     model.add_module("linear", torch.nn.Linear(n_features, 1, bias=False))
     model.linear.weight.data.fill_(0.0)
@@ -74,16 +75,16 @@ def main():
 
     loss = torch.nn.MSELoss(size_average=True)
 
-    # Optimizer 
-    svrg = SVRG(model.parameters(), T=T, data_loader=train_loader, lr=args.lr)
+    # Optimizer
+    opt = HALP(model.parameters(), T=T, data_loader=train_loader, lr=args.lr)
 
     dist_to_optimum = []
-    iters = 0 
+    iters = 0
     for e in range(num_epochs):
-        for i, (data, target) in enumerate(train_loader):  
-            
+        for i, (data, target) in enumerate(train_loader):
+
             # We need to add this function to models when we want to use SVRG
-            def closure(data=data, target=target): 
+            def closure(data=data, target=target):
                 data = Variable(data, requires_grad=False)
                 target = Variable(target, requires_grad=False)
                 if args.cuda:
@@ -93,18 +94,18 @@ def main():
                 cost.backward()
                 return cost
 
-            # This is the key line to perform the optimizer step 
+            # This is the key line to perform the optimizer step
             # We don't need to call forward/backward explicitly (in addition to in the closure)
-            # since the optimizer will call the closure 
-            svrg.step(closure)
+            # since the optimizer will call the closure
+            opt.step(closure)
 
-            # Performance metric: distance to optimum 
+            # Performance metric: distance to optimum
             w = np.asarray([p.data.cpu().numpy() for p in list(model.parameters())])
             dist = np.linalg.norm(w-w_opt)
             dist_to_optimum.append(dist)
             if iters % T == 0:
                 print("Iteration = %d, Dist_to_opt = %s" % (iters , dist))
-            iters += 1 
+            iters += 1
 
 if __name__ == "__main__":
     main()
