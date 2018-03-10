@@ -26,7 +26,7 @@ def main():
     parser = argparse.ArgumentParser(description='Linear regression')
     parser.add_argument('--epochs', type=int, default=100, metavar='N',
                         help='number of epochs to train (default: 100)')
-    parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
+    parser.add_argument('--lr', type=float, default= 0.01, metavar='LR',
                         help='learning rate (default: 0.01)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
@@ -58,6 +58,9 @@ def main():
                                     noise=10,
                                     n_informative=1)
 
+    # X = np.array([[1,1],[2,2]])
+    # Y = np.array([1,2])
+
     # Solve for optimal solution
     w_opt, _, _, _= np.linalg.lstsq(X, Y, rcond=None)
 
@@ -77,7 +80,6 @@ def main():
 
     # Optimizer
     opt = HALP(model.parameters(), T=T, data_loader=train_loader, lr=args.lr)
-
     dist_to_optimum = []
     iters = 0
     for e in range(num_epochs):

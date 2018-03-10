@@ -26,7 +26,7 @@ class HALP(torch.optim.SGD):
     """
 
     def __init__(self, params, lr=required, T=required, data_loader=required,
-        weight_decay=0.0, opt=torch.optim.SGD, mu=1, bits=8):
+        weight_decay=0.0, opt=torch.optim.SGD, mu=1e-2, bits=8):
 
         defaults = dict(lr=lr, weight_decay=weight_decay)
         self.__class__ = type(self.__class__.__name__,
@@ -104,7 +104,6 @@ class HALP(torch.optim.SGD):
             closure(data, target)
 
         # Adjust summed gradients by num_iterations accumulated over
-        # assert(n_iterations == len(self.data_loader))
         for p in self._params:
             if p.grad is not None:
                 p.grad.data /= len(self.data_loader)
@@ -124,6 +123,7 @@ class HALP(torch.optim.SGD):
 
         # Calculate full gradient
         if self.state['t_iters'] == self.T:
+            self._recenter(self._prev_w)
             self._compute_full_grad(closure)
             self._rescale()
             self._reset_z()
@@ -136,11 +136,6 @@ class HALP(torch.optim.SGD):
         closure()
 
         # Calculate the current grad.
-        # Add z to prev_w to form curr_w
-        for p, p0 in zip(self._curr_w, self._prev_w):
-            p.copy_(p0)
-        self._recenter(self._curr_w)
-
         self._set_weights_grad(self._curr_w, self._curr_grad)
         self._zero_grad()
         loss = closure()
@@ -150,7 +145,6 @@ class HALP(torch.optim.SGD):
         for i, p in enumerate(self._params):
             # Adjust gradient in place
             if p.grad is not None:
-                # NB: This should be _this_ batch.
                 p.grad.data -= (self._prev_grad[i] - self._full_grad[i])
                 p.grad.data.quantize_(self._scale_factors[i], self._bits)
 
@@ -164,8 +158,12 @@ class HALP(torch.optim.SGD):
             p.saturate_(sf, self._bits)
 
         self.state['t_iters'] += 1
-        # This needs to be at the end so the user gets the updated w
-        if self.state['t_iter'] == self.T:
-            self._recenter(self._prev_w)
+
+        # Set weights in params for user to access current w
+        # Add z to prev_w to form curr_w
+        for p, p0 in zip(self._curr_w, self._prev_w):
+            p.copy_(p0)
+        self._recenter(self._curr_w)
+        self._set_weights_grad(self._curr_w, self._curr_grad)
 
         return loss
