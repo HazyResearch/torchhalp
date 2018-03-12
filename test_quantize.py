@@ -26,7 +26,7 @@ def check_saturation(m1, scale_factor, bits):
     (5e-9, 32)
 ])
 def test_quantize(scale_factor, bits):
-	m1 = torch.rand(10).mul(30).add(-15) # uniform [-15, 15]
+	m1 = torch.rand(100).mul(30).add(-15) # uniform [-15, 15]
 	m1.quantize_(scale_factor, bits)
 
 	# Test that quantized value is in it's range
@@ -37,7 +37,7 @@ def test_quantize(scale_factor, bits):
 	for i in iter_indices(m2):
 		# Must be an integer in the "small" representation
 		m2[i] = round(m2[i] / scale_factor) * scale_factor
-	np.testing.assert_allclose(m1.numpy(), m2.numpy())
+	np.testing.assert_allclose(m1.numpy(), m2.numpy(), rtol=1e-6)
 
 @pytest.mark.parametrize("scale_factor,bits",
 [
@@ -46,7 +46,7 @@ def test_quantize(scale_factor, bits):
     (5e-9, 32)
 ])
 def test_saturate(scale_factor, bits):
-	m1 = torch.rand(10).mul(30).add(-15) # uniform [-15, 15]
+	m1 = torch.rand(100).mul(30).add(-15) # uniform [-15, 15]
 	m1.saturate_(scale_factor, bits)
 	# Test that saturated value is in it's range
 	check_saturation(m1, scale_factor, bits)

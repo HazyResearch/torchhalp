@@ -26,13 +26,13 @@ class HALP(torch.optim.SGD):
     """
 
     def __init__(self, params, lr=required, T=required, data_loader=required,
-                 weight_decay=0.0, opt=torch.optim.SGD, mu=1e-1, bits=2):
+                 weight_decay=0.0, opt=torch.optim.SGD, mu=1e-1, bits=8, biased=False):
 
         defaults = dict(lr=lr, weight_decay=weight_decay)
         self.__class__ = type(self.__class__.__name__,
                               (opt,object),
                               dict(self.__class__.__dict__))
-        logging.info("Using base optimizer {opt} in SVRG".format(opt))
+        logging.info("Using base optimizer {} in SVRG".format(opt))
         super(self.__class__, self).__init__(params, **defaults)
 
         if len(self.param_groups) != 1:
@@ -61,6 +61,7 @@ class HALP(torch.optim.SGD):
         self._scale_factors = [1 for p in params]
         self._bits = bits
         self._mu = mu
+        self._biased = biased
 
     def __setstate__(self, state):
         super(self.__class__, self).__setstate__(state)
@@ -123,6 +124,8 @@ class HALP(torch.optim.SGD):
         if self._full_grad is None:
             self._full_grad = [p.grad.data.clone() for p in self._params]
 
+        print "full grad pytorch", self._full_grad[0]
+
     def step(self, closure):
         """Performs a single optimization step.
         Arguments:
@@ -133,6 +136,8 @@ class HALP(torch.optim.SGD):
 
         # Calculate full gradient
         if self.state['t_iters'] == self.T:
+            print "HERE"
+            print "full grad w pytorch", self._prev_w[0]
             self._compute_full_grad(closure)
             self._rescale()
             self._reset_z()
@@ -154,18 +159,19 @@ class HALP(torch.optim.SGD):
             # Adjust gradient in-place
             if p.grad is not None:
                 # gradient_update = curr_grad - prev_grad + full_grad
+                # print "curr grad py", p.grad.data
+                # print "prev grad py", self._prev_grad
                 p.grad.data -= (self._prev_grad[i] - self._full_grad[i])
-                # Quantize the gradient_update in-place
-                p.grad.data.quantize_(self._scale_factors[i], self._bits)
 
         # Set the param pointers to z to update z with step
         self._set_weights_grad(self._z, None)
         # Call optimizer update step
         super(self.__class__, self).step()
 
-        # Clamp weights to low precision representation to emulate saturated add
+        # print "prequantized pytorch", p.data
+        # Quantize z in place
         for p, sf in zip(self._z, self._scale_factors):
-            p.saturate_(sf, self._bits)
+            p.quantize_(sf, self._bits, biased=self._biased)
 
         # Increment "inner loop" counter
         self.state['t_iters'] += 1
@@ -177,8 +183,10 @@ class HALP(torch.optim.SGD):
         # Update param pointers to curr_w for user access
         self._set_weights_grad(self._curr_w, self._curr_grad)
 
+        print self.state['t_iters']
         # Update prev_w to prev_w + z after the "inner loop" has finished
         if self.state['t_iters'] == self.T:
+            print "prev w", self._prev_w, "z", self._z
             self._recenter(self._prev_w)
 
         return loss

@@ -8,6 +8,7 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 
 from svrg import SVRG
+from halp import HALP
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
@@ -68,30 +69,30 @@ class Net(nn.Module):
         x = F.dropout(x, training=self.training)
         x = self.fc2(x)
         return F.log_softmax(x, dim=1)
-    
+
 model = Net()
 if args.cuda:
     model.cuda()
 
 # ===================================================================
-# THIS IS NEW --- need to call SVRG and pass data_loader and T 
+# THIS IS NEW --- need to call SVRG and pass data_loader and T
 # ===================================================================
-optimizer = SVRG(model.parameters(), data_loader=train_loader, T=100, lr=args.lr)
+optimizer = HALP(model.parameters(), data_loader=train_loader, T=100, lr=args.lr)
 
 def train(epoch):
     model.train()
-    loss = F.nll_loss 
+    loss = F.nll_loss
 
     for batch_idx, (data, target) in enumerate(train_loader):
 
         # ===========================================================
-        # THIS IS NEW --- need to add a closure method 
+        # THIS IS NEW --- need to add a closure method
         # ===========================================================
-        def closure(data=data, target=target): 
+        def closure(data=data, target=target):
             data = Variable(data, requires_grad=False)
             target = Variable(target, requires_grad=False)
 
-            # Need to pass an argument to use cuda or not 
+            # Need to pass an argument to use cuda or not
             if args.cuda:
                 data, target = data.cuda(), target.cuda()
 
@@ -101,14 +102,14 @@ def train(epoch):
             return cost
 
         # ===========================================================
-        # THIS IS NEW --- don't need to call forward/backward before 
+        # THIS IS NEW --- don't need to call forward/backward before
         # step (beyond what's done in the closure)
         # ===========================================================
-        optimizer.step(closure)
-        # if batch_idx % args.log_interval == 0:
-        #     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-        #         epoch, batch_idx * len(data), len(train_loader.dataset),
-        #         100. * batch_idx / len(train_loader), loss.data[0]))
+        cost = optimizer.step(closure)
+        if batch_idx % args.log_interval == 0:
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, batch_idx * len(data), len(train_loader.dataset),
+                100. * batch_idx / len(train_loader), cost.data[0]))
 
 def test():
     model.eval()
