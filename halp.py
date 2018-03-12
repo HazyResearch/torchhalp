@@ -124,8 +124,6 @@ class HALP(torch.optim.SGD):
         if self._full_grad is None:
             self._full_grad = [p.grad.data.clone() for p in self._params]
 
-        print "full grad pytorch", self._full_grad[0]
-
     def step(self, closure):
         """Performs a single optimization step.
         Arguments:
@@ -136,8 +134,6 @@ class HALP(torch.optim.SGD):
 
         # Calculate full gradient
         if self.state['t_iters'] == self.T:
-            print "HERE"
-            print "full grad w pytorch", self._prev_w[0]
             self._compute_full_grad(closure)
             self._rescale()
             self._reset_z()
@@ -159,8 +155,6 @@ class HALP(torch.optim.SGD):
             # Adjust gradient in-place
             if p.grad is not None:
                 # gradient_update = curr_grad - prev_grad + full_grad
-                # print "curr grad py", p.grad.data
-                # print "prev grad py", self._prev_grad
                 p.grad.data -= (self._prev_grad[i] - self._full_grad[i])
 
         # Set the param pointers to z to update z with step
@@ -168,7 +162,6 @@ class HALP(torch.optim.SGD):
         # Call optimizer update step
         super(self.__class__, self).step()
 
-        # print "prequantized pytorch", p.data
         # Quantize z in place
         for p, sf in zip(self._z, self._scale_factors):
             p.quantize_(sf, self._bits, biased=self._biased)
@@ -183,10 +176,8 @@ class HALP(torch.optim.SGD):
         # Update param pointers to curr_w for user access
         self._set_weights_grad(self._curr_w, self._curr_grad)
 
-        print self.state['t_iters']
         # Update prev_w to prev_w + z after the "inner loop" has finished
         if self.state['t_iters'] == self.T:
-            print "prev w", self._prev_w, "z", self._z
             self._recenter(self._prev_w)
 
         return loss

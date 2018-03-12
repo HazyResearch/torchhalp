@@ -3,12 +3,13 @@ from torch.autograd import Variable
 import torch.utils.data as data
 from torch import optim
 from svrg import SVRG
+from halp import HALP
 import numpy as np
 import random
 # import matplotlib.pyplot as plt
 from sklearn import linear_model, datasets
-import copy 
-import argparse 
+import copy
+import argparse
 
 import torch
 from torch.autograd import Variable
@@ -19,7 +20,7 @@ torch.set_printoptions(precision=10)
 def build_model(input_dim, output_dim=1, initial_value=None):
     model = torch.nn.Sequential()
     module = torch.nn.Linear(input_dim, output_dim, bias=False)
-    if initial_value is not None: 
+    if initial_value is not None:
         module.weight.data = torch.from_numpy(initial_value).type(torch.FloatTensor)
         model.add_module("linear", module)
     else:
@@ -28,7 +29,7 @@ def build_model(input_dim, output_dim=1, initial_value=None):
 
 class SynthDataset(data.Dataset):
     def __init__(self, data, labels):
-        self.data = data 
+        self.data = data
         self.labels = labels
 
     def __len__(self):
@@ -55,26 +56,26 @@ def main():
         torch.cuda.manual_seed(args.seed)
 
     n = 100
-    n_features = 4    
+    n_features = 4
     n_classes = 3
     num_epochs = 100
     T = n
 
     np.random.seed(args.seed)
-    X,Y = datasets.make_classification(n_samples=n, 
-                            n_features=n_features, 
-                            n_informative=2, 
+    X,Y = datasets.make_classification(n_samples=n,
+                            n_features=n_features,
+                            n_informative=2,
                             n_redundant=0,
-                            n_repeated=0, 
-                            n_classes=n_classes, 
+                            n_repeated=0,
+                            n_classes=n_classes,
                             n_clusters_per_class=1)
 
     # Calculate w_opt
-    clf = linear_model.LogisticRegression(fit_intercept=False, 
-        multi_class='multinomial', 
-        solver='sag', 
-        C=1e100, 
-        penalty='l2', 
+    clf = linear_model.LogisticRegression(fit_intercept=False,
+        multi_class='multinomial',
+        solver='sag',
+        C=1e100,
+        penalty='l2',
         max_iter=10000, tol=1e-8)
     clf.fit(X, Y)
     w_opt = clf.coef_
@@ -84,23 +85,23 @@ def main():
     X = torch.from_numpy(X).float()
     Y = torch.from_numpy(Y).long()
     synth_dataset = SynthDataset(X, Y)
-    # Can also change batch_size of dataloader here 
+    # Can also change batch_size of dataloader here
     train_loader = torch.utils.data.DataLoader(synth_dataset)
 
     w = np.random.uniform(0, 1, (n_classes, n_features))
     model = build_model(n_features, n_classes, initial_value=w)
 
-    if args.cuda: 
-        model.cuda() 
+    if args.cuda:
+        model.cuda()
 
-    svrg = SVRG(model.parameters(), lr=args.lr, T=T, data_loader=train_loader)
-    dist_to_optimum = [] 
+    opt = HALP(model.parameters(), lr=args.lr, T=T, data_loader=train_loader)
+    dist_to_optimum = []
     num_epochs = args.epochs
     iters = 0
     for e in range(num_epochs):
-        for i, (data, target) in enumerate(train_loader): 
-            # This closure method would have to be copied into any program that wants to 
-            # use SVRG :/ 
+        for i, (data, target) in enumerate(train_loader):
+            # This closure method would have to be copied into any program that wants to
+            # use SVRG :/
             def closure(data=data, target=target):
                 data = Variable(data, requires_grad=False)
                 target = Variable(target, requires_grad=False)
@@ -111,15 +112,15 @@ def main():
                 cost.backward()
                 return cost
 
-            svrg.step(closure)
+            opt.step(closure)
 
-            # Performance metric: distance to optimum 
+            # Performance metric: distance to optimum
             w = np.asarray([p.data.cpu().numpy() for p in list(model.parameters())])
             dist = np.linalg.norm(w-w_opt)
             dist_to_optimum.append(dist)
             if iters % T == 0:
                 print("Iteration = %d, Dist_to_opt = %s" % (iters , dist))
-            iters += 1 
+            iters += 1
     # plt.plot(range(iters), dist_to_optimum, label="SVRG")
     # plt.ylabel('Distance to Optimum')
     # plt.xlabel('Iterations')
