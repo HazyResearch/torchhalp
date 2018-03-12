@@ -26,13 +26,13 @@ class HALP(torch.optim.SGD):
     """
 
     def __init__(self, params, lr=required, T=required, data_loader=required,
-        weight_decay=0.0, opt=torch.optim.SGD, mu=1e-2, bits=8):
+                 weight_decay=0.0, opt=torch.optim.SGD, mu=1e-1, bits=2):
 
         defaults = dict(lr=lr, weight_decay=weight_decay)
         self.__class__ = type(self.__class__.__name__,
                               (opt,object),
                               dict(self.__class__.__dict__))
-        # logging.info(f"Using base optimizer {opt} in SVRG")
+        logging.info("Using base optimizer {opt} in SVRG".format(opt))
         super(self.__class__, self).__init__(params, **defaults)
 
         if len(self.param_groups) != 1:
@@ -55,8 +55,9 @@ class HALP(torch.optim.SGD):
         self.data_loader = data_loader
         self.state['t_iters'] = T
         self.T = T # Needed to trigger full gradient
-        # logging.info(f"Data Loader has {len(self.data_loader)} with batch {self.data_loader.batch_size}")
-
+        logging.info("Data Loader has {} with batch {}".format(len(self.data_loader),
+                                                               self.data_loader.batch_size))
+        # Separate scale factor for each layer
         self._scale_factors = [1 for p in params]
         self._bits = bits
         self._mu = mu
@@ -71,6 +72,9 @@ class HALP(torch.optim.SGD):
                 p.grad.zero_()
 
     def _set_weights_grad(self,ws,gs):
+        """ Set the pointers in params to ws and gs for p.data and p.grad.data
+        respectively. This allows us to avoid copying data in and out of parameters.
+        """
         for idx, p in enumerate(self._params):
             if ws is not None: p.data = ws[idx]
             if gs is not None and p.grad is not None:
@@ -78,23 +82,28 @@ class HALP(torch.optim.SGD):
                 assert (p.grad.data.data_ptr() == gs[idx].data_ptr())
 
     def _rescale(self):
-        """Update scale for z"""
+        """Update scale factors for z."""
         div_factor = math.pow(2.0, self._bits-1) - 1
         for i, fg in enumerate(self._full_grad):
             self._scale_factors[i] = fg.norm() / (self._mu * div_factor)
 
     def _reset_z(self):
-        """Set z to zero"""
+        """Set z to zero."""
         for p in self._z:
             p.fill_(0)
 
     def _recenter(self, ws):
-        """ Add z to w """
+        """Add the values in self._z to ws."""
         for w, z in zip(ws, self._z):
             w.add_(z)
 
     def _compute_full_grad(self, closure):
-        # Setup the full grad
+        """ Call the closure function to compute the gradient
+        over the entire dataset, and accumulate the gradient into
+        self._full_grad.
+        """
+
+        # Set up pointers for the full gradient
         # Reset gradients before accumulating them
         self._set_weights_grad(self._prev_w, self._full_grad)
         self._zero_grad()
@@ -104,6 +113,7 @@ class HALP(torch.optim.SGD):
             closure(data, target)
 
         # Adjust summed gradients by num_iterations accumulated over
+        # Assumes loss size average argument is true
         for p in self._params:
             if p.grad is not None:
                 p.grad.data /= len(self.data_loader)
@@ -123,47 +133,52 @@ class HALP(torch.optim.SGD):
 
         # Calculate full gradient
         if self.state['t_iters'] == self.T:
-            self._recenter(self._prev_w)
             self._compute_full_grad(closure)
             self._rescale()
             self._reset_z()
             # Reset t
             self.state['t_iters'] = 0
 
-        # Setup the previous grad.
+        # Calculate gradient of prev_w
         self._set_weights_grad(self._prev_w, self._prev_grad)
         self._zero_grad()
         closure()
 
-        # Calculate the current grad.
+        # Calculate the current curr_w (which equals prev_w + z)
         self._set_weights_grad(self._curr_w, self._curr_grad)
         self._zero_grad()
         loss = closure()
 
         # Adjust the current gradient using the previous gradient and the full gradient.
-        # We have normalized so that these are all comparable.
         for i, p in enumerate(self._params):
-            # Adjust gradient in place
+            # Adjust gradient in-place
             if p.grad is not None:
+                # gradient_update = curr_grad - prev_grad + full_grad
                 p.grad.data -= (self._prev_grad[i] - self._full_grad[i])
+                # Quantize the gradient_update in-place
                 p.grad.data.quantize_(self._scale_factors[i], self._bits)
 
-        # Set weights to z for update
+        # Set the param pointers to z to update z with step
         self._set_weights_grad(self._z, None)
         # Call optimizer update step
         super(self.__class__, self).step()
 
-        # Clamp weights to low precision representation for saturated add
+        # Clamp weights to low precision representation to emulate saturated add
         for p, sf in zip(self._z, self._scale_factors):
             p.saturate_(sf, self._bits)
 
+        # Increment "inner loop" counter
         self.state['t_iters'] += 1
 
-        # Set weights in params for user to access current w
-        # Add z to prev_w to form curr_w
+        # Set curr_w to prev_w + z
         for p, p0 in zip(self._curr_w, self._prev_w):
             p.copy_(p0)
         self._recenter(self._curr_w)
+        # Update param pointers to curr_w for user access
         self._set_weights_grad(self._curr_w, self._curr_grad)
+
+        # Update prev_w to prev_w + z after the "inner loop" has finished
+        if self.state['t_iters'] == self.T:
+            self._recenter(self._prev_w)
 
         return loss
