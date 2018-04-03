@@ -2,6 +2,7 @@ from torch.optim.optimizer import Optimizer, required
 import torch
 import copy, logging
 from torch.autograd import Variable
+from test_quantize import check_saturation, check_quantization
 import math
 
 import quantize
@@ -11,6 +12,8 @@ torch.Tensor.quantize_ = quantize.quantize_
 torch.Tensor.saturate_ = quantize.saturate_
 torch.cuda.FloatTensor.quantize_ = quantize.quantize_
 torch.cuda.FloatTensor.saturate_ = quantize.saturate_
+
+logging.getLogger().setLevel(logging.DEBUG)
 
 # NB: Note we choose the baseclass dynamically below.
 class HALP(torch.optim.SGD):
@@ -128,7 +131,7 @@ class HALP(torch.optim.SGD):
         """Performs a single optimization step.
         Arguments:
             closure (callable): A closure that reevaluates the model
-                and returns the loss.
+                and     returns the loss.
         """
         assert len(self.param_groups) == 1
 
@@ -165,6 +168,11 @@ class HALP(torch.optim.SGD):
         # Quantize z in place
         for p, sf in zip(self._z, self._scale_factors):
             p.quantize_(sf, self._bits, biased=self._biased)
+
+        # Test to make sure values are quantized
+        if logging.getLogger().getEffectiveLevel() <= logging.DEBUG:
+            for p, sf in zip(self._z, self._scale_factors):
+                check_quantization(p.cpu(), sf, self._bits)
 
         # Increment "inner loop" counter
         self.state['t_iters'] += 1

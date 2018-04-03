@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import product
 
 def stablesoftmax(x):
     """Compute the softmax of vector x in a numerically stable way."""
