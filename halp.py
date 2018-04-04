@@ -9,6 +9,8 @@ import quantize
 
 logging.getLogger().setLevel(logging.INFO)
 
+logging.getLogger().setLevel(logging.DEBUG)
+
 # NB: Note we choose the baseclass dynamically below.
 class HALP(torch.optim.SGD):
     r"""Implements high-accuracy low-precision algorithm.
