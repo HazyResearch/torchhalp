@@ -1,0 +1,4 @@
+pytorch-cifar10/data*
+*.pt
+*ckpt*
+*tar.gz

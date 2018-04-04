@@ -9,8 +9,13 @@ import torch.optim as optim
 
 from torchtext.datasets import language_modeling
 
+import sys
+sys.path.append('../..')
+from svrg import SVRG
+
 import data
 import model
+
 
 parser = argparse.ArgumentParser(description='PyTorch Wikitext-2 RNN/LSTM Language Model')
 parser.add_argument('--data', type=str, default='./data/wikitext-2',
@@ -160,44 +165,43 @@ def train():
     total_loss = 0
     start_time = time.time()
     ntokens = len(corpus.dictionary)
-    hidden = model.init_hidden(args.batch_size)
-    # for batch, i in enumerate(range(0, train_data.size(0) - 1, args.bptt)):
+    # hidden = model.init_hidden(args.batch_size)
     for batch, (data, targets) in enumerate(train_loader):
-    #     print data.shape/
-    #     print targets.shape
-        data, targets = Variable(data), Variable(targets.view(-1))
+        data = Variable(data, requires_grad=False)
+        targets = Variable(targets.view(-1), requires_grad=False)
 
-        # def closure(data=batch, target=target):
-        #     data = Variable(data, requires_grad=False)
-        #     target = Variable(target, requires_grad=False)
-
-        #     # Need to pass an argument to use cuda or not
-        #     if args.cuda:
-        #         data, target = data.cuda(), target.cuda()
-
-        #     output = model(data)
-        #     cost = loss(output, target)
-        #     cost.backward()
-        #     return cost
-
-        # data, targets = get_batch(train_data, i)
-        # print data.shape
-        # print targets.shape
-        # Starting each batch, we detach the hidden state from how it was previously produced.
-        # If we didn't, the model would try backpropagating all the way to start of the dataset.
-        hidden = repackage_hidden(hidden)
+        hidden = model.init_hidden(args.batch_size)
         model.zero_grad()
         output, hidden = model(data, hidden)
         loss = criterion(output.view(-1, ntokens), targets)
         loss.backward()
 
+        def closure(data=data, targets=targets, loss=loss):
+            # data = Variable(data, requires_grad=False)
+            # targets = Variable(targets.view(-1), requires_grad=False)
+
+            # Need to pass an argument to use cuda or not
+            # if args.cuda:
+            #     data, targets = data.cuda(), targets.cuda()
+
+            # Stateless LSTM
+            # hidden = model.init_hidden(args.batch_size)
+            # output, hidden = model(data, hidden)
+            # cost = criterion(output.view(-1, ntokens), targets)
+            # loss.backward()
+            return loss
+
+        # hidden = model.init_hidden(args.batch_size)
+        # model.zero_grad()
+        # output, hidden = model(data, hidden)
+        # loss = criterion(output.view(-1, ntokens), targets)
+        # loss.backward()
+
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
         torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
 
-
-        # for p in model.parameters():
-        #     p.data.add_(-lr, p.grad.data)
-        optimizer.step()
+        loss = optimizer.step(closure)
+        # optimizer.step(closure=None)
 
         total_loss += loss.data
 
@@ -214,9 +218,11 @@ def train():
 # Loop over epochs.
 lr = args.lr
 best_val_loss = None
-optimizer = optim.SGD(model.parameters(), lr=lr)
 train_dataset = TextDataset(train_data)
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.bptt)
+# optimizer = SVRG(model.parameters(), lr=lr, T=len(train_data), data_loader=train_loader)
+optimizer = optim.SGD(model.parameters(), lr=lr)
+
 # At any point you can hit Ctrl + C to break out of training early.
 try:
     for epoch in range(1, args.epochs+1):

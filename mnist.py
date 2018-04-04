@@ -77,7 +77,8 @@ if args.cuda:
 # ===================================================================
 # THIS IS NEW --- need to call SVRG and pass data_loader and T
 # ===================================================================
-optimizer = HALP(model.parameters(), data_loader=train_loader, T=100, lr=args.lr)
+# optimizer = HALP(model.parameters(), data_loader=train_loader, T=100, lr=args.lr)
+optimizer = optim.SGD(model.parameters(), lr=args.lr)
 
 def train(epoch):
     model.train()
@@ -89,6 +90,7 @@ def train(epoch):
         # THIS IS NEW --- need to add a closure method
         # ===========================================================
         def closure(data=data, target=target):
+            # print(data, target)
             data = Variable(data, requires_grad=False)
             target = Variable(target, requires_grad=False)
 

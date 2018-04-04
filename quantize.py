@@ -30,15 +30,5 @@ def saturate_(input, scale_factor, bits):
 # Monkey patch torch.Tensor
 torch.Tensor.quantize_ = quantize_
 torch.Tensor.saturate_ = saturate_
-
-# a = torch.Tensor([-2,-1,-1.5,2.5,0.5, 0.6, 0.7, 0.9])
-# a.quantize_(0.125, 4)
-# print a
-
-# a = torch.Tensor([-2,-1,-1.5,2.5,0.5, 0.6, 0.7, 0.9])
-# a.quantize_(0.125, 4, biased=True)
-# print a
-
-# b = torch.Tensor([-4,5,1,2,3,-1,-3])
-# b.saturate_(0.125, 4)
-# print b
+torch.cuda.FloatTensor.quantize_ = quantize_
+torch.cuda.FloatTensor.saturate_ = saturate_
