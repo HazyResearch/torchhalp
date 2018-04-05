@@ -20,11 +20,6 @@ from models import *
 from utils import progress_bar
 from torch.autograd import Variable
 
-import sys
-sys.path.append('..')
-from svrg import SVRG
-from halp import HALP
-
 import csv
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
@@ -190,7 +185,7 @@ if args.opt == 'SVRG':
 if args.opt == 'HALP':
     if not os.path.isdir('results/halp'):
         os.mkdir('results/halp')
-    tag = 'results/halp/{}_lr_{}_T{}_mu_{}'.format(args.net, args.lr, args.T, args.mu, args.b)
+    tag = 'results/halp/{}_lr_{}_T{}_mu_{}_b_{}'.format(args.net, args.lr, args.T, args.mu, args.b)
 training_file = '{}_train.csv'.format(tag)
 test_file = '{}_test.csv'.format(tag)
 

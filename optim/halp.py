@@ -2,8 +2,11 @@ from torch.optim.optimizer import Optimizer, required
 import torch
 import copy, logging
 from torch.autograd import Variable
-from test_quantize import check_saturation, check_quantization
 import math
+
+import sys
+sys.path.append('../test')
+from test_quantize import check_saturation, check_quantization
 
 import quantize
 
@@ -29,7 +32,7 @@ class HALP(torch.optim.SGD):
         self.__class__ = type(self.__class__.__name__,
                               (opt,object),
                               dict(self.__class__.__dict__))
-        logging.info("Using base optimizer {} in SVRG".format(opt))
+        logging.info("Using base optimizer {} in HALP".format(opt))
         super(self.__class__, self).__init__(params, **defaults)
 
         if len(self.param_groups) != 1:

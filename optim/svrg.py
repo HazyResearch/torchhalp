@@ -16,8 +16,8 @@ class SVRG(torch.optim.SGD):
     .. note::
     """
 
-    def __init__(self, params, lr=required, T=required, data_loader=required, weight_decay=0.0,opt=torch.optim.SGD):
-        defaults = dict(lr=lr, weight_decay=weight_decay)
+    def __init__(self, params, lr=required, T=required, data_loader=required, weight_decay=0.0, momentum=0.0, opt=torch.optim.SGD):
+        defaults = dict(lr=lr, weight_decay=weight_decay, momentum=momentum)
         self.__class__ = type(self.__class__.__name__,
                               (opt,object),
                               dict(self.__class__.__dict__))

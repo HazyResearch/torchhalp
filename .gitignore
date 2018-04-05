@@ -1,4 +1,20 @@
-pytorch-cifar10/data*
 *.pt
 *ckpt*
 *tar.gz
+*.pyc
+*.pytest_cache
+
+# Data files 
+*/cifar10/data/
+
+# Result files
+*/cifar10/results/
+
+# IPython notebook checkpoints
+.ipynb_checkpoints
+
+# Editor temporaries
+*.swn
+*.swo
+*.swp
+*~
