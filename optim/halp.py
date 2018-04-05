@@ -4,8 +4,6 @@ import copy, logging
 from torch.autograd import Variable
 import math
 
-import sys
-sys.path.append('../test')
 from test_quantize import check_saturation, check_quantization
 
 import quantize

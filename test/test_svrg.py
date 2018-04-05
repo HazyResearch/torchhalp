@@ -1,12 +1,15 @@
-from svrg import SVRG
-from logistic_regression import build_model, SynthDataset
-
 import pytest
 import numpy as np
 import torch
 from torch.autograd import Variable
 
 from common import *
+
+import sys
+sys.path.append('..')
+from optim import SVRG
+
+from examples import regression
 
 np.random.seed(0xdeadbeef)
 
@@ -29,7 +32,7 @@ def baseline_svrg(x, y, w, lr, T=1, K=1, calc_gradient=None):
     return w
 
 def pytorch_svrg(x, y, w, lr, T, K=1, n_features=None, n_classes=1):
-    model = build_model(n_features, n_classes, initial_value=w)
+    model = regression.utils.build_model(n_features, n_classes, initial_value=w)
     x = torch.from_numpy(x).float()
     # linear regression
     if n_classes == 1:
@@ -39,7 +42,7 @@ def pytorch_svrg(x, y, w, lr, T, K=1, n_features=None, n_classes=1):
         y = torch.from_numpy(y).long()
         loss = torch.nn.CrossEntropyLoss()
 
-    synth_dataset = SynthDataset(x, y)
+    synth_dataset = regression.utils.SynthDataset(x, y)
     train_loader = torch.utils.data.DataLoader(synth_dataset)
 
     svrg_opt = SVRG(model.parameters(), lr=lr, T=T, data_loader=train_loader)

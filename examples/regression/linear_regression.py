@@ -1,8 +1,4 @@
-from svrg import SVRG
-from halp import HALP
-
 import numpy as np
-import matplotlib.pyplot as plt
 from sklearn import linear_model, datasets
 import argparse
 
@@ -11,16 +7,11 @@ import torch
 from torch.autograd import Variable
 from torch import optim
 
-class SynthDataset(data.Dataset):
-    def __init__(self, data, labels):
-        self.data = data
-        self.labels = labels
+from utils import SynthDataset
 
-    def __len__(self):
-        return len(self.labels)
-
-    def __getitem__(self, idx):
-        return self.data[idx], self.labels[idx]
+import sys
+sys.path.append("../..")
+from optim import SVRG, HALP
 
 def main():
     parser = argparse.ArgumentParser(description='Linear regression')

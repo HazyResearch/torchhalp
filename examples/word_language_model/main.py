@@ -11,7 +11,7 @@ from torchtext.datasets import language_modeling
 
 import sys
 sys.path.append('../..')
-from svrg import SVRG
+from optim import SVRG, HALP
 
 import data
 import model
@@ -205,8 +205,8 @@ lr = args.lr
 best_val_loss = None
 train_dataset = TextDataset(train_data)
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.bptt)
-# optimizer = SVRG(model.parameters(), lr=lr, T=len(train_data), data_loader=train_loader)
-optimizer = optim.SGD(model.parameters(), lr=lr)
+optimizer = SVRG(model.parameters(), lr=lr, T=len(train_data), data_loader=train_loader)
+# optimizer = optim.SGD(model.parameters(), lr=lr)
 
 # At any point you can hit Ctrl + C to break out of training early.
 try:

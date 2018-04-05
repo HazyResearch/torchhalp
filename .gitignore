@@ -5,7 +5,7 @@
 *.pytest_cache
 
 # Data files 
-*/cifar10/data/
+*/data/
 
 # Result files
 */cifar10/results/

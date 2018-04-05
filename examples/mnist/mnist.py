@@ -7,8 +7,9 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.autograd import Variable
 
-from svrg import SVRG
-from halp import HALP
+import sys
+sys.path.append('../..')
+from optim import SVRG, HALP
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
@@ -77,8 +78,8 @@ if args.cuda:
 # ===================================================================
 # THIS IS NEW --- need to call SVRG and pass data_loader and T
 # ===================================================================
-# optimizer = HALP(model.parameters(), data_loader=train_loader, T=100, lr=args.lr)
-optimizer = optim.SGD(model.parameters(), lr=args.lr)
+optimizer = HALP(model.parameters(), data_loader=train_loader, T=100, lr=args.lr)
+# optimizer = optim.SGD(model.parameters(), lr=args.lr)
 
 def train(epoch):
     model.train()

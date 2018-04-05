@@ -1,12 +1,14 @@
-from halp import HALP
-from logistic_regression import build_model, SynthDataset
-
 import pytest
 import numpy as np
 import torch
 from torch.autograd import Variable
 
 from common import *
+
+import sys
+sys.path.append('..')
+from optim import HALP
+from examples import regression
 
 np.random.seed(0xdeadbeef)
 
@@ -51,7 +53,7 @@ def baseline_halp(x, y, w, lr, b, mu, T=1, K=1, calc_gradient=None):
 
 
 def pytorch_halp(x, y, w, lr, b, mu, T=1, K=1, n_features=None, n_classes=1):
-    model = build_model(n_features, n_classes, initial_value=w)
+    model = regression.utils.build_model(n_features, n_classes, initial_value=w)
     x = torch.from_numpy(x).float()
     # Linear regression
     if n_classes == 1:
@@ -61,7 +63,7 @@ def pytorch_halp(x, y, w, lr, b, mu, T=1, K=1, n_features=None, n_classes=1):
         y = torch.from_numpy(y).long()
         loss = torch.nn.CrossEntropyLoss()
 
-    synth_dataset = SynthDataset(x, y)
+    synth_dataset = regression.utils.SynthDataset(x, y)
     train_loader = torch.utils.data.DataLoader(synth_dataset)
     halp_opt = HALP(model.parameters(), lr=lr, T=T, data_loader=train_loader, bits=b, mu=mu, biased=True)
 

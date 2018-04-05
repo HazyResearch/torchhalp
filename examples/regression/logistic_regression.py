@@ -2,11 +2,10 @@ import torch
 from torch.autograd import Variable
 import torch.utils.data as data
 from torch import optim
-from svrg import SVRG
-from halp import HALP
 import numpy as np
 import random
 # import matplotlib.pyplot as plt
+
 from sklearn import linear_model, datasets
 import copy
 import argparse
@@ -17,26 +16,11 @@ from torch.nn import Parameter
 from torch import optim
 torch.set_printoptions(precision=10)
 
-def build_model(input_dim, output_dim=1, initial_value=None):
-    model = torch.nn.Sequential()
-    module = torch.nn.Linear(input_dim, output_dim, bias=False)
-    if initial_value is not None:
-        module.weight.data = torch.from_numpy(initial_value).type(torch.FloatTensor)
-        model.add_module("linear", module)
-    else:
-        model.add_module("linear", torch.nn.Linear(input_dim, output_dim, bias=False))
-    return model
+from utils import build_model, SynthDataset
 
-class SynthDataset(data.Dataset):
-    def __init__(self, data, labels):
-        self.data = data
-        self.labels = labels
-
-    def __len__(self):
-        return len(self.labels)
-
-    def __getitem__(self, idx):
-        return self.data[idx], self.labels[idx]
+import sys
+sys.path.append("../..")
+from optim import SVRG, HALP
 
 def main():
     parser = argparse.ArgumentParser(description='Logistic regression')

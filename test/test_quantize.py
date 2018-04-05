@@ -31,7 +31,7 @@ def check_quantization(m1, scale_factor, bits):
     (5e-5, 16),
     (5e-9, 32)
 ])
-def test_quantize(scale_factor, bits):
+def test_quantization(scale_factor, bits):
 	# Create a matrix with 100 values randomly uniform within [-15, 15]
 	m1 = torch.rand(100).mul(30).add(-15)
 	m1.quantize_(scale_factor, bits)
@@ -43,7 +43,7 @@ def test_quantize(scale_factor, bits):
     (5e-5, 16),
     (5e-9, 32)
 ])
-def test_saturate(scale_factor, bits):
+def test_saturation(scale_factor, bits):
 	m1 = torch.rand(100).mul(30).add(-15) # uniform [-15, 15]
 	m1.saturate_(scale_factor, bits)
 	# Test that saturated value is in it's range
