@@ -9,8 +9,6 @@ import quantize
 
 logging.getLogger().setLevel(logging.INFO)
 
-logging.getLogger().setLevel(logging.DEBUG)
-
 # NB: Note we choose the baseclass dynamically below.
 class HALP(torch.optim.SGD):
     r"""Implements high-accuracy low-precision algorithm.
@@ -25,9 +23,9 @@ class HALP(torch.optim.SGD):
     """
 
     def __init__(self, params, lr=required, T=required, data_loader=required,
-                 weight_decay=0.0, opt=torch.optim.SGD, mu=1e-1, bits=8, biased=False):
+                 weight_decay=0.0, momentum=0.0, opt=torch.optim.SGD, mu=1e-1, bits=8, biased=False):
 
-        defaults = dict(lr=lr, weight_decay=weight_decay)
+        defaults = dict(lr=lr, weight_decay=weight_decay, momentum=momentum)
         self.__class__ = type(self.__class__.__name__,
                               (opt,object),
                               dict(self.__class__.__dict__))

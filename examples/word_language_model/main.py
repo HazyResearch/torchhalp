@@ -165,42 +165,27 @@ def train():
     total_loss = 0
     start_time = time.time()
     ntokens = len(corpus.dictionary)
-    # hidden = model.init_hidden(args.batch_size)
+    hidden = model.init_hidden(args.batch_size)
     for batch, (data, targets) in enumerate(train_loader):
-        data = Variable(data, requires_grad=False)
-        targets = Variable(targets.view(-1), requires_grad=False)
-
-        hidden = model.init_hidden(args.batch_size)
-        model.zero_grad()
-        output, hidden = model(data, hidden)
-        loss = criterion(output.view(-1, ntokens), targets)
-        loss.backward()
-
-        def closure(data=data, targets=targets, loss=loss):
-            # data = Variable(data, requires_grad=False)
-            # targets = Variable(targets.view(-1), requires_grad=False)
-
+        def closure(data=data, targets=targets):
             # Need to pass an argument to use cuda or not
             # if args.cuda:
             #     data, targets = data.cuda(), targets.cuda()
 
             # Stateless LSTM
-            # hidden = model.init_hidden(args.batch_size)
-            # output, hidden = model(data, hidden)
-            # cost = criterion(output.view(-1, ntokens), targets)
-            # loss.backward()
-            return loss
+            data1 = Variable(data, requires_grad=False)
+            targets1 = Variable(targets.view(-1), requires_grad=False)
+            hidden1 = model.init_hidden(args.batch_size)
+            output1, hidden2 = model(data1, hidden1)
+            loss1 = criterion(output1.view(-1, ntokens), targets1)
+            loss1.backward()
+            # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
+            torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
+            return loss1
 
-        # hidden = model.init_hidden(args.batch_size)
-        # model.zero_grad()
-        # output, hidden = model(data, hidden)
-        # loss = criterion(output.view(-1, ntokens), targets)
-        # loss.backward()
-
-        # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
-        torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
-
+        optimizer.zero_grad()
         loss = optimizer.step(closure)
+
         # optimizer.step(closure=None)
 
         total_loss += loss.data
