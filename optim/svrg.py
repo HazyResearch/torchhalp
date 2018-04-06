@@ -1,34 +1,36 @@
 from torch.optim.optimizer import Optimizer, required
 import torch
-import copy, logging
 from torch.autograd import Variable
+import copy, logging
 
-# NB: Note we choose the baseclass dynamically below.
 class SVRG(torch.optim.SGD):
-    r"""Implements stochastic variance reduction gradient descent.
+    """Implements stochastic variance reduction gradient descent.
     Args:
         params (iterable): iterable of parameters to optimize
         lr (float): learning rate
         T (int): number of iterations between the step to take the full grad/save w
         data_loader (DataLoader): dataloader to use to load training data
         weight_decay (float, optional): weight decay (L2 penalty) (default: 0)
-    Example:
-    .. note::
+        momentum (float, optional): momentum (default: 0)
+        opt (torch.optim): optimizer to baseclass (default: SGD)
     """
 
-    def __init__(self, params, lr=required, T=required, data_loader=required, weight_decay=0.0, momentum=0.0, opt=torch.optim.SGD):
+    def __init__(self, params, lr=required, T=required, data_loader=required, weight_decay=0.0,
+                 momentum=0.0, opt=torch.optim.SGD):
+
         defaults = dict(lr=lr, weight_decay=weight_decay, momentum=momentum)
+
+        # Choose the baseclass dynamically.
         self.__class__ = type(self.__class__.__name__,
                               (opt,object),
                               dict(self.__class__.__dict__))
-        # logging.info(f"Using base optimizer {opt} in SVRG")
+        logging.info("Using base optimizer {} in SVRG".format(opt))
         super(self.__class__, self).__init__(params, **defaults)
 
         if len(self.param_groups) != 1:
             raise ValueError("SVRG doesn't support per-parameter options "
                              "(parameter groups)")
 
-        # TODO(mleszczy): Add these to parameter group or state?
         params = self.param_groups[0]['params']
 
         self._params = params
@@ -45,7 +47,9 @@ class SVRG(torch.optim.SGD):
         self.data_loader = data_loader
         self.state['t_iters'] = T
         self.T = T # Needed to trigger full gradient
-        # logging.info(f"Data Loader has {len(self.data_loader)} with batch {self.data_loader.batch_size}")
+
+        logging.info("Data Loader has {} with batch {}".format(len(self.data_loader),
+                                                               self.data_loader.batch_size))
 
     def __setstate__(self, state):
         super(self.__class__, self).__setstate__(state)
@@ -117,7 +121,6 @@ class SVRG(torch.optim.SGD):
                 p.grad.data -= (d_p0 - fg)
 
         # Call optimizer update step
-        # TODO: Abstract this away.
         super(self.__class__, self).step()
 
         self.state['t_iters'] += 1

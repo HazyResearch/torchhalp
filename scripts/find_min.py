@@ -9,6 +9,7 @@ def parse_args():
 	parser.add_argument('--filter_b', action='store_true')
 	parser.add_argument('--b', type=int)
 	parser.add_argument('--filter_lr', action='store_true')
+	parser.add_argument('--filter_x', action='store_true')
 	parser.add_argument('--lr', type=float)
 	return parser.parse_args()
 
@@ -29,6 +30,10 @@ def main():
 		if args.filter_lr:
 			if 'lr_{}'.format(args.lr) not in filename:
 				continue
+		# Includes momentum and weight decay
+		if args.filter_x:
+			if '_x' not in filename:
+				continue
 		with open(filename) as f:
 			value = np.mean([float(line[0]) for line in list(csv.reader(f))[-3:]])
 			if min_file is None or min(min_value, value) == value:
@@ -37,18 +42,6 @@ def main():
 			if max_file is None or max(max_value, value) == value:
 				max_file = filename
 				max_value = value
-
-	# filename = "max_min_{}".format(type_)
-	# if args.filter_b:
-	# 	filename+="_b_{}".format(args.b)
-	# if args.filter_lr:
-	# 	filename+="_lr_{}".format(args.lr)
-
-	# with open(filename, "w") as f:
-		# f.write("min: ")
-		# f.write(min_file + "\n")
-		# f.write("max: ")
-		# f.write(max_file + "\n")
 
 	print("min: {}".format(min_file))
 	print("max: {}".format(max_file))

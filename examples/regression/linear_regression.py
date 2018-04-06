@@ -13,9 +13,9 @@ import sys
 sys.path.append("../..")
 from optim import SVRG, HALP
 
-def main():
+def parse_args():
     parser = argparse.ArgumentParser(description='Linear regression')
-    parser.add_argument('--epochs', type=int, default=100, metavar='N',
+    parser.add_argument('--epochs', type=int, default=10, metavar='N',
                         help='number of epochs to train (default: 100)')
     parser.add_argument('--lr', type=float, default= 0.01, metavar='LR',
                         help='learning rate (default: 0.01)')
@@ -23,13 +23,17 @@ def main():
                         help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
-    parser.add_argument('--T', type=int, default=100, metavar='T',
+    parser.add_argument('--T', type=int, default=200, metavar='T',
                         help='how many iterations between taking full gradient')
     parser.add_argument('--n', type=int, default=100, metavar='NS',
                         help='number of samples')
     parser.add_argument('--num-features', type=int, default=4, metavar='F',
                         help='number of features')
-    args = parser.parse_args()
+    parser.add_argument('--opt', default='SGD', type=str, help='Optimizer for training')
+    return parser.parse_args()
+
+def main():
+    args = parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -45,16 +49,12 @@ def main():
 
     # Make synthetic dataset with sklearn
     X, Y = datasets.make_regression(n_samples=n,
-                                    n_features=n_features,
-                                    noise=10,
-                                    n_informative=1)
-
-    # X = np.array([[1,1],[2,2]])
-    # Y = np.array([1,2])
+                                    n_features=n_features)
 
     # Solve for optimal solution
     w_opt, _, _, _= np.linalg.lstsq(X, Y, rcond=None)
 
+    # Make dataloader
     X = torch.from_numpy(X).float()
     Y = torch.from_numpy(Y).float().view(-1,1)
     synth_dataset = SynthDataset(X, Y)
@@ -70,7 +70,16 @@ def main():
     loss = torch.nn.MSELoss(size_average=True)
 
     # Optimizer
-    opt = HALP(model.parameters(), T=T, data_loader=train_loader, lr=args.lr)
+    if args.opt == 'SGD':
+        opt = optim.SGD(model.parameters(), lr=args.lr)
+
+    elif args.opt == 'SVRG':
+        opt = SVRG(model.parameters(), T=T, data_loader=train_loader, lr=args.lr)
+
+    elif args.opt == 'HALP':
+        opt = HALP(model.parameters(), T=T, data_loader=train_loader, lr=args.lr)
+
+    # Training
     dist_to_optimum = []
     iters = 0
     for e in range(num_epochs):

@@ -101,9 +101,9 @@ criterion = nn.CrossEntropyLoss()
 if args.opt == 'SGD':
     optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
 elif args.opt == 'SVRG':
-    optimizer = SVRG(net.parameters(), lr=args.lr, data_loader=trainloader, T=args.T)
+    optimizer = SVRG(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4, data_loader=trainloader, T=args.T)
 elif args.opt == 'HALP':
-    optimizer = HALP(net.parameters(), lr=args.lr, data_loader=trainloader, T=args.T, mu=args.mu, bits=args.b)
+    optimizer = HALP(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4, data_loader=trainloader, T=args.T, mu=args.mu, bits=args.b)
 
 # Training
 def train(epoch):
@@ -184,11 +184,11 @@ if args.opt == 'SGD':
 if args.opt == 'SVRG':
     if not os.path.isdir('results/svrg'):
         os.mkdir('results/svrg')
-    tag = 'results/svrg/{}_lr_{}_T_{}'.format(args.net, args.lr, args.T)
+    tag = 'results/svrg/{}_lr_{}_T_{}_x'.format(args.net, args.lr, args.T)
 if args.opt == 'HALP':
     if not os.path.isdir('results/halp'):
         os.mkdir('results/halp')
-    tag = 'results/halp/{}_lr_{}_T{}_mu_{}_b_{}'.format(args.net, args.lr, args.T, args.mu, args.b)
+    tag = 'results/halp/{}_lr_{}_T{}_mu_{}_b_{}_x'.format(args.net, args.lr, args.T, args.mu, args.b)
 training_file = '{}_train.csv'.format(tag)
 test_file = '{}_test.csv'.format(tag)
 

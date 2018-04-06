@@ -95,9 +95,9 @@ def train(epoch):
             data = Variable(data, requires_grad=False)
             target = Variable(target, requires_grad=False)
 
-            # Need to pass an argument to use cuda or not
-            if args.cuda:
-                data, target = data.cuda(), target.cuda()
+            # # Need to pass an argument to use cuda or not
+            # if args.cuda:
+            #     data, target = data.cuda(), target.cuda()
 
             output = model(data)
             cost = loss(output, target)

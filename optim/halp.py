@@ -1,32 +1,36 @@
 from torch.optim.optimizer import Optimizer, required
 import torch
-import copy, logging
 from torch.autograd import Variable
+import copy, logging
 import math
 
 from test_quantize import check_saturation, check_quantization
-
 import quantize
 
+# Change to DEBUG to validate quantization (slow)
 logging.getLogger().setLevel(logging.INFO)
 
-# NB: Note we choose the baseclass dynamically below.
 class HALP(torch.optim.SGD):
-    r"""Implements high-accuracy low-precision algorithm.
+    """Implements high-accuracy low-precision algorithm.
     Args:
         params (iterable): iterable of parameters to optimize
         lr (float): learning rate
         T (int): number of iterations between the step to take the full grad/save w
         data_loader (DataLoader): dataloader to use to load training data
         weight_decay (float, optional): weight decay (L2 penalty) (default: 0)
-    Example:
-    .. note::
+        momentum (float, optional): momentum (default: 0)
+        opt (torch.optim): optimizer to baseclass (default: SGD)
+        mu (float, optional): mu hyperparameter for HALP algorithm (default: 0.1)
+        bits (int, optional): number of bits to use for offset (default: 8)
+        biased (bool, optional): type of rounding to use for quantization (default: unbiased)
     """
 
     def __init__(self, params, lr=required, T=required, data_loader=required,
                  weight_decay=0.0, momentum=0.0, opt=torch.optim.SGD, mu=1e-1, bits=8, biased=False):
 
         defaults = dict(lr=lr, weight_decay=weight_decay, momentum=momentum)
+
+        # Choose the baseclass dynamically
         self.__class__ = type(self.__class__.__name__,
                               (opt,object),
                               dict(self.__class__.__dict__))

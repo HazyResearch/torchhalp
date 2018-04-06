@@ -168,25 +168,20 @@ def train():
     hidden = model.init_hidden(args.batch_size)
     for batch, (data, targets) in enumerate(train_loader):
         def closure(data=data, targets=targets):
-            # Need to pass an argument to use cuda or not
-            # if args.cuda:
-            #     data, targets = data.cuda(), targets.cuda()
+            data = Variable(data, requires_grad=False)
+            targets = Variable(targets.view(-1), requires_grad=False)
 
             # Stateless LSTM
-            data1 = Variable(data, requires_grad=False)
-            targets1 = Variable(targets.view(-1), requires_grad=False)
-            hidden1 = model.init_hidden(args.batch_size)
-            output1, hidden2 = model(data1, hidden1)
-            loss1 = criterion(output1.view(-1, ntokens), targets1)
-            loss1.backward()
+            hidden = model.init_hidden(args.batch_size)
+            output, hidden = model(data, hidden)
+            loss = criterion(output1.view(-1, ntokens), targets)
+            loss.backward()
             # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
             torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
-            return loss1
+            return loss
 
         optimizer.zero_grad()
         loss = optimizer.step(closure)
-
-        # optimizer.step(closure=None)
 
         total_loss += loss.data
 
@@ -205,7 +200,9 @@ lr = args.lr
 best_val_loss = None
 train_dataset = TextDataset(train_data)
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.bptt)
-optimizer = SVRG(model.parameters(), lr=lr, T=len(train_data), data_loader=train_loader)
+
+# Choose your optimizer below
+optimizer = SVRG(model.parameters(), lr=lr, T=len(train_loader), data_loader=train_loader)
 # optimizer = optim.SGD(model.parameters(), lr=lr)
 
 # At any point you can hit Ctrl + C to break out of training early.
