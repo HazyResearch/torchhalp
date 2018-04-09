@@ -1,5 +1,5 @@
-PyTorch SVRG
-==============
+High-Accuracy Low-Precision
+===========================
 This repo contains a PyTorch implementation of the HALP optimizer (High-Accuracy Low-Precision Training)[https://arxiv.org/abs/1803.03383] and a SVRG optimizer.
 
 ### Getting Started
