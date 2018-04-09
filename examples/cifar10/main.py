@@ -90,10 +90,6 @@ else:
         net = VGG('VGG19')
     elif args.net == 'ResNet':
         net = ResNet18()
-    # Matches TF version
-    elif args.net == 'ExpResNet':
-        net = ExpResNet()
-
     # net = PreActResNet18()
     # net = GoogLeNet()
     # net = DenseNet121()
@@ -111,11 +107,11 @@ if use_cuda:
 
 criterion = nn.CrossEntropyLoss()
 if args.opt == 'SGD':
-    optimizer = optim.SGD(net.parameters(), lr=args.lr, weight_decay=2e-4)
+    optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
 elif args.opt == 'SVRG':
-    optimizer = SVRG(net.parameters(), lr=args.lr, weight_decay=2e-4, data_loader=trainloader, T=args.T)
+    optimizer = SVRG(net.parameters(), lr=args.lr, weight_decay=5e-4, data_loader=trainloader, T=args.T)
 elif args.opt == 'HALP':
-    optimizer = HALP(net.parameters(), lr=args.lr, weight_decay=2e-4, data_loader=trainloader, T=args.T, mu=args.mu, bits=args.b)
+    optimizer = HALP(net.parameters(), lr=args.lr, weight_decay=5e-4, data_loader=trainloader, T=args.T, mu=args.mu, bits=args.b)
 
 
 # Training
