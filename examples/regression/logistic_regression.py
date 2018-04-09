@@ -10,12 +10,6 @@ from sklearn import linear_model, datasets
 import copy
 import argparse
 
-import torch
-from torch.autograd import Variable
-from torch.nn import Parameter
-from torch import optim
-torch.set_printoptions(precision=10)
-
 from utils import build_model, SynthDataset
 
 import sys

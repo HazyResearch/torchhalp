@@ -22,23 +22,23 @@ parser.add_argument('--data', type=str, default='./data/wikitext-2',
                     help='location of the data corpus')
 parser.add_argument('--model', type=str, default='LSTM',
                     help='type of recurrent net (RNN_TANH, RNN_RELU, LSTM, GRU)')
-parser.add_argument('--emsize', type=int, default=200,
+parser.add_argument('--emsize', type=int, default=128,
                     help='size of word embeddings')
-parser.add_argument('--nhid', type=int, default=200,
+parser.add_argument('--nhid', type=int, default=128,
                     help='number of hidden units per layer')
 parser.add_argument('--nlayers', type=int, default=2,
                     help='number of layers')
-parser.add_argument('--lr', type=float, default=20,
+parser.add_argument('--lr', type=float, default=1,
                     help='initial learning rate')
-parser.add_argument('--clip', type=float, default=0.25,
+parser.add_argument('--clip', type=float, default=5.,
                     help='gradient clipping')
 parser.add_argument('--epochs', type=int, default=40,
                     help='upper epoch limit')
-parser.add_argument('--batch_size', type=int, default=20, metavar='N',
+parser.add_argument('--batch_size', type=int, default=50, metavar='N',
                     help='batch size')
-parser.add_argument('--bptt', type=int, default=35,
+parser.add_argument('--bptt', type=int, default=50,
                     help='sequence length')
-parser.add_argument('--dropout', type=float, default=0.2,
+parser.add_argument('--dropout', type=float, default=0,
                     help='dropout applied to layers (0 = no dropout)')
 parser.add_argument('--tied', action='store_true',
                     help='tie the word embedding and softmax weights')
@@ -91,8 +91,8 @@ def batchify(data, bsz):
 
 eval_batch_size = 10
 train_data = batchify(corpus.train, args.batch_size)
-val_data = batchify(corpus.valid, eval_batch_size)
-test_data = batchify(corpus.test, eval_batch_size)
+val_data = batchify(corpus.valid, args.batch_size)
+test_data = batchify(corpus.test, args.batch_size)
 
 class TextDataset(torch.utils.data.Dataset):
     def __init__(self, data):
@@ -174,7 +174,7 @@ def train():
             # Stateless LSTM
             hidden = model.init_hidden(args.batch_size)
             output, hidden = model(data, hidden)
-            loss = criterion(output1.view(-1, ntokens), targets)
+            loss = criterion(output.view(-1, ntokens), targets)
             loss.backward()
             # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
             torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
@@ -202,7 +202,7 @@ train_dataset = TextDataset(train_data)
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.bptt)
 
 # Choose your optimizer below
-optimizer = SVRG(model.parameters(), lr=lr, T=len(train_loader), data_loader=train_loader)
+optimizer = SVRG(model.parameters(), lr=lr, T=50, data_loader=train_loader)
 # optimizer = optim.SGD(model.parameters(), lr=lr)
 
 # At any point you can hit Ctrl + C to break out of training early.

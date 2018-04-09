@@ -67,21 +67,33 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False,
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
+if args.opt == 'SGD':
+    ckpt_tag = '{}_{}_lr_{}'.format(args.opt, args.net, args.lr)
+elif args.opt == 'SVRG':
+    ckpt_tag = '{}_{}_lr_{}_T_{}'.format(args.opt, args.net, args.lr, args.T)
+elif args.opt == 'HALP':
+    ckpt_tag = '{}_{}_lr_{}_T_{}_mu_{}_b_{}'.format(args.opt, args.net, args.lr, args.T, args.mu, args.b)
+
 # Model
 if args.resume:
     # Load checkpoint.
     print('==> Resuming from checkpoint..')
     assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-    checkpoint = torch.load('./checkpoint/ckpt.t7')
+    checkpoint = torch.load('./checkpoint/{}'.format(ckpt_tag))
     net = checkpoint['net']
     best_acc = checkpoint['acc']
     start_epoch = checkpoint['epoch'] + 1
+    print(best_acc)
 else:
     print('==> Building model..')
     if args.net == 'VGG':
         net = VGG('VGG19')
     elif args.net == 'ResNet':
         net = ResNet18()
+    # Matches TF version
+    elif args.net == 'ExpResNet':
+        net = ExpResNet()
+
     # net = PreActResNet18()
     # net = GoogLeNet()
     # net = DenseNet121()
@@ -99,19 +111,18 @@ if use_cuda:
 
 criterion = nn.CrossEntropyLoss()
 if args.opt == 'SGD':
-    optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
+    optimizer = optim.SGD(net.parameters(), lr=args.lr, weight_decay=2e-4)
 elif args.opt == 'SVRG':
-    optimizer = SVRG(net.parameters(), lr=args.lr, data_loader=trainloader, T=args.T)
+    optimizer = SVRG(net.parameters(), lr=args.lr, weight_decay=2e-4, data_loader=trainloader, T=args.T)
 elif args.opt == 'HALP':
-    optimizer = HALP(net.parameters(), lr=args.lr, data_loader=trainloader, T=args.T, mu=args.mu, bits=args.b)
+    optimizer = HALP(net.parameters(), lr=args.lr, weight_decay=2e-4, data_loader=trainloader, T=args.T, mu=args.mu, bits=args.b)
+
 
 # Training
-def train(epoch, optimizer):
-    print(optimizer)
+def train(epoch):
     losses = []
     print('\nEpoch: %d' % epoch)
     net.train()
-    train_loss = 0
     correct = 0
     total = 0
     for batch_idx, (data, target) in enumerate(trainloader):
@@ -159,17 +170,17 @@ def test(epoch):
                 % (test_loss/(batch_idx+1), acc, correct, total))
 
     # Save checkpoint.
-    # if acc > best_acc:
-    #     print('Saving..')
-    #     state = {
-    #         'net': net.module if use_cuda else net,
-    #         'acc': acc,
-    #         'epoch': epoch,
-    #     }
-    #     if not os.path.isdir('checkpoint'):
-    #         os.mkdir('checkpoint')
-    #     torch.save(state, './checkpoint/ckpt.{}'.format(args.opt))
-    #     best_acc = acc
+    if acc > best_acc:
+        print('Saving..')
+        state = {
+            'net': net.module if use_cuda else net,
+            'acc': acc,
+            'epoch': epoch,
+        }
+        if not os.path.isdir('checkpoint'):
+            os.mkdir('checkpoint')
+        torch.save(state, './checkpoint/{}'.format(ckpt_tag))
+        best_acc = acc
 
     accuracies.append(acc)
     return accuracies
@@ -185,11 +196,11 @@ if args.opt == 'SGD':
 if args.opt == 'SVRG':
     if not os.path.isdir('results/svrg'):
         os.mkdir('results/svrg')
-    tag = 'results/svrg/{}_lr_{}_T_{}_warmstart'.format(args.net, args.lr, args.T)
+    tag = 'results/svrg/{}_lr_{}_T_{}'.format(args.net, args.lr, args.T)
 if args.opt == 'HALP':
     if not os.path.isdir('results/halp'):
         os.mkdir('results/halp')
-    tag = 'results/halp/{}_lr_{}_T{}_mu_{}_b_{}_warmstart'.format(args.net, args.lr, args.T, args.mu, args.b)
+    tag = 'results/halp/{}_lr_{}_T{}_mu_{}_b_{}'.format(args.net, args.lr, args.T, args.mu, args.b)
 training_file = '{}_train.csv'.format(tag)
 test_file = '{}_test.csv'.format(tag)
 
@@ -201,15 +212,9 @@ if start_epoch == 0:
     except OSError:
         pass
 
-if start_epoch == 0:
-    # Warm start
-    warmstart_optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
-    train(0, warmstart_optimizer)
-    start_epoch += 1
-
 # Do training
 for epoch in range(start_epoch, start_epoch+args.num_epochs):
-    training_losses = train(epoch, optimizer)
+    training_losses = train(epoch)
     test_accuracies = test(epoch)
 
     # Save metrics
