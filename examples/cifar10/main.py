@@ -192,11 +192,11 @@ if args.opt == 'SGD':
 if args.opt == 'SVRG':
     if not os.path.isdir('results/svrg'):
         os.mkdir('results/svrg')
-    tag = 'results/svrg/{}_lr_{}_T_{}'.format(args.net, args.lr, args.T)
+    tag = 'results/svrg/{}_lr_{}_T_{}_l2_5e-4'.format(args.net, args.lr, args.T)
 if args.opt == 'HALP':
     if not os.path.isdir('results/halp'):
         os.mkdir('results/halp')
-    tag = 'results/halp/{}_lr_{}_T{}_mu_{}_b_{}'.format(args.net, args.lr, args.T, args.mu, args.b)
+    tag = 'results/halp/{}_lr_{}_T{}_mu_{}_b_{}_l2_5e-4'.format(args.net, args.lr, args.T, args.mu, args.b)
 training_file = '{}_train.csv'.format(tag)
 test_file = '{}_test.csv'.format(tag)
 
