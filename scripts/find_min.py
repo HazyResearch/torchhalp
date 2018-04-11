@@ -10,6 +10,7 @@ def parse_args():
 	parser.add_argument('--b', type=int)
 	parser.add_argument('--filter_lr', action='store_true')
 	parser.add_argument('--filter_x', action='store_true')
+	parser.add_argument('--filter_l2', action='store_true')
 	parser.add_argument('--lr', type=float)
 	return parser.parse_args()
 
@@ -33,6 +34,9 @@ def main():
 		# Includes momentum and weight decay
 		if args.filter_x:
 			if '_x' not in filename:
+				continue
+		if args.filter_l2:
+			if 'l2_5e-4' not in filename:
 				continue
 		with open(filename) as f:
 			value = np.mean([float(line[0]) for line in list(csv.reader(f))[-3:]])

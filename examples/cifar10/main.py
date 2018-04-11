@@ -68,11 +68,11 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False,
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
 if args.opt == 'SGD':
-    ckpt_tag = '{}_{}_lr_{}'.format(args.opt, args.net, args.lr)
+    ckpt_tag = '{}_{}'.format(args.opt, args.net)
 elif args.opt == 'SVRG':
-    ckpt_tag = '{}_{}_lr_{}_T_{}'.format(args.opt, args.net, args.lr, args.T)
+    ckpt_tag = '{}_{}_T_{}'.format(args.opt, args.net, args.T)
 elif args.opt == 'HALP':
-    ckpt_tag = '{}_{}_lr_{}_T_{}_mu_{}_b_{}'.format(args.opt, args.net, args.lr, args.T, args.mu, args.b)
+    ckpt_tag = '{}_{}_T_{}_mu_{}_b_{}'.format(args.opt, args.net, args.T, args.mu, args.b)
 
 # Model
 if args.resume:
