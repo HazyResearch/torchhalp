@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
-from common import *
+from utils import *
 
 import sys
 sys.path.append('..')

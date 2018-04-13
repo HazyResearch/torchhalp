@@ -1,6 +1,28 @@
-'''Train CIFAR10 with PyTorch.'''
+# MIT License
 
-# modified from https://github.com/kuangliu/pytorch-cifar
+# Copyright (c) 2017 liukuang
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# modified from https://github.com/kuangliu/pytorch-cifar to add support for SVRG and HALP
+
+'''Train CIFAR10 with PyTorch.'''
 
 from __future__ import print_function
 
@@ -15,12 +37,12 @@ import torchvision.transforms as transforms
 
 import os
 import argparse
+import csv
 
-from models import *
+from resnet import *
 from utils import progress_bar
 from torch.autograd import Variable
 
-import csv
 import sys
 sys.path.append("../..")
 from optim import SVRG, HALP
@@ -31,12 +53,10 @@ parser.add_argument('--T', type=int, help='T, only used for SVRG and HALP')
 parser.add_argument('--mu', default=1, type=float, help='mu, only used for HALP')
 parser.add_argument('--b', default=8, type=int, help='Number of bits to use, only used for HALP')
 parser.add_argument('--num_epochs', default=1, type=int, help='Number of epochs')
-parser.add_argument('--net', default='VGG', type=str, help='Network')
 parser.add_argument('--opt', default='SGD', type=str, help='Optimizer for training')
 parser.add_argument('--resume', '-r', action='store_true', help='Resume from checkpoint')
 parser.add_argument('--progress', action='store_true')
 args = parser.parse_args()
-
 
 use_cuda = torch.cuda.is_available()
 best_acc = 0  # best test accuracy
@@ -59,6 +79,7 @@ transform_test = transforms.Compose([
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True, num_workers=2)
 
+# Default to T being 2*size of the dataset if T is not set
 if args.T is None and (args.opt == 'SVRG' or args.opt == 'HALP'):
     args.T = 2*len(trainloader) # Number of batches
 
@@ -66,13 +87,6 @@ testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True
 testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-
-if args.opt == 'SGD':
-    ckpt_tag = '{}_{}'.format(args.opt, args.net)
-elif args.opt == 'SVRG':
-    ckpt_tag = '{}_{}_T_{}'.format(args.opt, args.net, args.T)
-elif args.opt == 'HALP':
-    ckpt_tag = '{}_{}_T_{}_mu_{}_b_{}'.format(args.opt, args.net, args.T, args.mu, args.b)
 
 # Model
 if args.resume:
@@ -83,22 +97,9 @@ if args.resume:
     net = checkpoint['net']
     best_acc = checkpoint['acc']
     start_epoch = checkpoint['epoch'] + 1
-    print(best_acc)
 else:
     print('==> Building model..')
-    if args.net == 'VGG':
-        net = VGG('VGG19')
-    elif args.net == 'ResNet':
-        net = ResNet18()
-    # net = PreActResNet18()
-    # net = GoogLeNet()
-    # net = DenseNet121()
-    # net = ResNeXt29_2x64d()
-    # net = MobileNet()
-    # net = MobileNetV2()
-    # net = DPN92()
-    # net = ShuffleNetG2()
-    # net = SENet18()
+    net = ResNet18()
 
 if use_cuda:
     net.cuda()
@@ -106,13 +107,20 @@ if use_cuda:
     cudnn.benchmark = True
 
 criterion = nn.CrossEntropyLoss()
+
+# ===================================================================
+# THIS IS NEW --- need to call SVRG/HALP and pass data_loader and T
+# and other optional parameters
+# ===================================================================
 if args.opt == 'SGD':
+    ckpt_tag = '{}'.format(args.opt)
     optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
 elif args.opt == 'SVRG':
+    ckpt_tag = '{}_T_{}'.format(args.opt, args.T)
     optimizer = SVRG(net.parameters(), lr=args.lr, weight_decay=5e-4, data_loader=trainloader, T=args.T)
 elif args.opt == 'HALP':
+    ckpt_tag = '{}_T_{}_mu_{}_b_{}'.format(args.opt, args.T, args.mu, args.b)
     optimizer = HALP(net.parameters(), lr=args.lr, weight_decay=5e-4, data_loader=trainloader, T=args.T, mu=args.mu, bits=args.b)
-
 
 # Training
 def train(epoch):
@@ -188,15 +196,15 @@ if not os.path.isdir('results'):
 if args.opt == 'SGD':
     if not os.path.isdir('results/sgd'):
         os.mkdir('results/sgd')
-    tag = 'results/sgd/{}_lr_{}'.format(args.net, args.lr)
+    tag = 'results/sgd/ResNet_lr_{}'.format(args.lr)
 if args.opt == 'SVRG':
     if not os.path.isdir('results/svrg'):
         os.mkdir('results/svrg')
-    tag = 'results/svrg/{}_lr_{}_T_{}_l2_5e-4'.format(args.net, args.lr, args.T)
+    tag = 'results/svrg/ResNet_lr_{}_T_{}_l2_5e-4'.format(args.lr, args.T)
 if args.opt == 'HALP':
     if not os.path.isdir('results/halp'):
         os.mkdir('results/halp')
-    tag = 'results/halp/{}_lr_{}_T{}_mu_{}_b_{}_l2_5e-4'.format(args.net, args.lr, args.T, args.mu, args.b)
+    tag = 'results/halp/ResNet_lr_{}_T{}_mu_{}_b_{}_l2_5e-4'.format(args.lr, args.T, args.mu, args.b)
 training_file = '{}_train.csv'.format(tag)
 test_file = '{}_test.csv'.format(tag)
 

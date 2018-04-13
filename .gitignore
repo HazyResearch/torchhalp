@@ -3,6 +3,7 @@
 *tar.gz
 *.pyc
 *.pytest_cache
+*.svg
 
 # Data files 
 */data/

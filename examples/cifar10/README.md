@@ -1,35 +1,13 @@
-# Train CIFAR10 with PyTorch
+# CIFAR-10 Example on ResNet-18
 
-I'm playing with [PyTorch](http://pytorch.org/) on the CIFAR10 dataset.
+We can run SGD, SVRG, and HALP on a ResNet-18 with minimal modification to existing code (https://github.com/kuangliu/pytorch-cifar).
 
-## Pros & cons
-Pros:
-- Built-in data loading and augmentation, very nice!
-- Training is fast, maybe even a little bit faster.
-- Very memory efficient!
+To run ResNet-18 on CIFAR10 using HALP:
 
-Cons:
-- No progress bar, sad :(
-- No built-in log.
+`python main.py --num_epochs 150 --opt HALP --lr 0.1 --T 195 --mu 20 --progress`.
 
-## Accuracy
-| Model             | Acc.        |
-| ----------------- | ----------- |
-| [VGG16](https://arxiv.org/abs/1409.1556)              | 92.64%      |
-| [ResNet18](https://arxiv.org/abs/1512.03385)          | 93.02%      |
-| [ResNet50](https://arxiv.org/abs/1512.03385)          | 93.62%      |
-| [ResNet101](https://arxiv.org/abs/1512.03385)         | 93.75%      |
-| [MobileNetV2](https://arxiv.org/abs/1801.04381)       | 94.43%      |
-| [ResNeXt29(32x4d)](https://arxiv.org/abs/1611.05431)  | 94.73%      |
-| [ResNeXt29(2x64d)](https://arxiv.org/abs/1611.05431)  | 94.82%      |
-| [DenseNet121](https://arxiv.org/abs/1608.06993)       | 95.04%      |
-| [PreActResNet18](https://arxiv.org/abs/1603.05027)    | 95.11%      |
-| [DPN92](https://arxiv.org/abs/1707.01629)             | 95.16%      |
+The learning rate is set to 0.1. The hyperparameter `T`, which determines how often we take the full gradient and do the bit centering is set to 195 batches (about half an epoch). `Mu`, a hyperparameter that affects the scaling of the low-precision model in HALP is set to 20. The default number of bits used for HALP is 8, but the `--b` flag can be set to use a different number of bits. Since this is simulation, any number of bits greater than 1 can be used.
 
-## Learning rate adjustment
-I manually change the `lr` during training:
-- `0.1` for epoch `[0,150)`
-- `0.01` for epoch `[150,250)`
-- `0.001` for epoch `[250,350)`
+As you decrease T, your code will likely take longer to run since you will be taking the full gradient more often. As you increase T, you may notice that your code runs faster but may converge slower. We explored sweeping different hyperparameters in our [results](results/ResNet18_results.ipynb) and found that with the settings above, we could get acceptable validation accuracy down to 4 bits.
 
-Resume the training with `python main.py --resume --lr=0.01`
+

@@ -1,10 +1,11 @@
-import quantize
 import math
 import torch
 import pytest
 import numpy as np
 
-from common import iter_indices
+from utils import iter_indices
+
+import quantize
 
 def check_saturation(m1, scale_factor, bits):
 	min_val = -scale_factor*math.pow(2, bits-1)
