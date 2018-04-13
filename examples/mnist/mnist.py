@@ -1,3 +1,35 @@
+# BSD 3-Clause License
+
+# Copyright (c) 2017,
+# All rights reserved.
+
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+
+# * Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer.
+
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+
+# * Neither the name of the copyright holder nor the names of its
+#   contributors may be used to endorse or promote products derived from
+#   this software without specific prior written permission.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+# https://github.com/pytorch/examples/blob/master/mnist/main.py
+
 from __future__ import print_function
 import argparse
 import torch
@@ -8,7 +40,7 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 
 import sys
-sys.path.append('../..')
+sys.path.append("../..")
 from optim import SVRG, HALP
 
 # Training settings
@@ -69,50 +101,47 @@ class Net(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training)
         x = self.fc2(x)
-        return F.log_softmax(x, dim=1)
+        return F.log_softmax(x)
 
 model = Net()
 if args.cuda:
     model.cuda()
 
 # ===================================================================
-# THIS IS NEW --- need to call SVRG and pass data_loader and T
+# THIS IS NEW --- need to call SVRG/HALP and pass data_loader and T
+# and other optional parameters
 # ===================================================================
-optimizer = HALP(model.parameters(), data_loader=train_loader, T=100, lr=args.lr)
+# optimizer = HALP(model.parameters(), data_loader=train_loader, T=100, lr=args.lr)
 # optimizer = optim.SGD(model.parameters(), lr=args.lr)
+optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
 def train(epoch):
     model.train()
-    loss = F.nll_loss
-
     for batch_idx, (data, target) in enumerate(train_loader):
 
         # ===========================================================
         # THIS IS NEW --- need to add a closure method
         # ===========================================================
         def closure(data=data, target=target):
-            # print(data, target)
-            data = Variable(data, requires_grad=False)
-            target = Variable(target, requires_grad=False)
-
-            # # Need to pass an argument to use cuda or not
-            # if args.cuda:
-            #     data, target = data.cuda(), target.cuda()
+            if args.cuda:
+                data, target = data.cuda(), target.cuda()
+            data, target = Variable(data), Variable(target)
 
             output = model(data)
-            cost = loss(output, target)
-            cost.backward()
-            return cost
+            loss = F.nll_loss(output, target)
+            loss.backward()
+            return loss
 
         # ===========================================================
         # THIS IS NEW --- don't need to call forward/backward before
         # step (beyond what's done in the closure)
         # ===========================================================
-        cost = optimizer.step(closure)
+        optimizer.zero_grad()
+        loss = optimizer.step(closure)
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), cost.data[0]))
+                100. * batch_idx / len(train_loader), loss.data[0]))
 
 def test():
     model.eval()
@@ -125,7 +154,7 @@ def test():
         output = model(data)
         test_loss += F.nll_loss(output, target, size_average=False).data[0] # sum up batch loss
         pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
-        correct += pred.eq(target.data.view_as(pred)).cpu().sum()
+        correct += pred.eq(target.data.view_as(pred)).long().cpu().sum()
 
     test_loss /= len(test_loader.dataset)
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(

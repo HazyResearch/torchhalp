@@ -4,7 +4,7 @@ from torch.autograd import Variable
 import copy, logging
 import math
 
-from test_quantize import check_saturation, check_quantization
+#from test_quantize import check_saturation, check_quantization
 import quantize
 
 # Change to DEBUG to validate quantization (slow)
@@ -172,9 +172,9 @@ class HALP(torch.optim.SGD):
             p.quantize_(sf, self._bits, biased=self._biased)
 
         # Test to make sure values are quantized
-        if logging.getLogger().getEffectiveLevel() <= logging.DEBUG:
-            for p, sf in zip(self._z, self._scale_factors):
-                check_quantization(p.cpu(), sf, self._bits)
+ #       if logging.getLogger().getEffectiveLevel() <= logging.DEBUG:
+ #           for p, sf in zip(self._z, self._scale_factors):
+ #               check_quantization(p.cpu(), sf, self._bits)
 
         # Increment "inner loop" counter
         self.state['t_iters'] += 1

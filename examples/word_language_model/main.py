@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import torch.optim as optim
-
-from torchtext.datasets import language_modeling
+from torch.utils.data import Dataset
+import csv
 
 import sys
 sys.path.append('../..')
@@ -15,30 +15,30 @@ from optim import SVRG, HALP
 
 import data
 import model
-
+import os
 
 parser = argparse.ArgumentParser(description='PyTorch Wikitext-2 RNN/LSTM Language Model')
 parser.add_argument('--data', type=str, default='./data/wikitext-2',
                     help='location of the data corpus')
 parser.add_argument('--model', type=str, default='LSTM',
                     help='type of recurrent net (RNN_TANH, RNN_RELU, LSTM, GRU)')
-parser.add_argument('--emsize', type=int, default=128,
+parser.add_argument('--emsize', type=int, default=200,
                     help='size of word embeddings')
-parser.add_argument('--nhid', type=int, default=128,
+parser.add_argument('--nhid', type=int, default=200,
                     help='number of hidden units per layer')
 parser.add_argument('--nlayers', type=int, default=2,
                     help='number of layers')
-parser.add_argument('--lr', type=float, default=1,
+parser.add_argument('--lr', type=float, default=20,
                     help='initial learning rate')
-parser.add_argument('--clip', type=float, default=5.,
+parser.add_argument('--clip', type=float, default=0.25,
                     help='gradient clipping')
 parser.add_argument('--epochs', type=int, default=40,
                     help='upper epoch limit')
-parser.add_argument('--batch_size', type=int, default=50, metavar='N',
+parser.add_argument('--batch_size', type=int, default=20, metavar='N',
                     help='batch size')
-parser.add_argument('--bptt', type=int, default=50,
+parser.add_argument('--bptt', type=int, default=35,
                     help='sequence length')
-parser.add_argument('--dropout', type=float, default=0,
+parser.add_argument('--dropout', type=float, default=0.2,
                     help='dropout applied to layers (0 = no dropout)')
 parser.add_argument('--tied', action='store_true',
                     help='tie the word embedding and softmax weights')
@@ -50,6 +50,10 @@ parser.add_argument('--log-interval', type=int, default=200, metavar='N',
                     help='report interval')
 parser.add_argument('--save', type=str,  default='model.pt',
                     help='path to save the final model')
+parser.add_argument('--opt', default='SGD', type=str, help='Optimizer for training')
+parser.add_argument('--T', type=int, help='T, only used for SVRG and HALP')
+parser.add_argument('--mu', default=1, type=float, help='mu, only used for HALP')
+parser.add_argument('--b', default=8, type=int, help='Number of bits to use, only used for HALP')
 args = parser.parse_args()
 
 # Set the random seed manually for reproducibility.
@@ -91,10 +95,10 @@ def batchify(data, bsz):
 
 eval_batch_size = 10
 train_data = batchify(corpus.train, args.batch_size)
-val_data = batchify(corpus.valid, args.batch_size)
-test_data = batchify(corpus.test, args.batch_size)
+val_data = batchify(corpus.valid, eval_batch_size)
+test_data = batchify(corpus.test, eval_batch_size)
 
-class TextDataset(torch.utils.data.Dataset):
+class TextDataset(Dataset):
     def __init__(self, data):
         self.data = data
 
@@ -166,6 +170,7 @@ def train():
     start_time = time.time()
     ntokens = len(corpus.dictionary)
     hidden = model.init_hidden(args.batch_size)
+    training_losses = []
     for batch, (data, targets) in enumerate(train_loader):
         def closure(data=data, targets=targets):
             data = Variable(data, requires_grad=False)
@@ -184,7 +189,7 @@ def train():
         loss = optimizer.step(closure)
 
         total_loss += loss.data
-
+        training_losses.append(loss.data[0])
         if batch % args.log_interval == 0 and batch > 0:
             cur_loss = total_loss[0] / args.log_interval
             elapsed = time.time() - start_time
@@ -194,6 +199,7 @@ def train():
                 elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss)))
             total_loss = 0
             start_time = time.time()
+    return training_losses
 
 # Loop over epochs.
 lr = args.lr
@@ -202,14 +208,21 @@ train_dataset = TextDataset(train_data)
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.bptt)
 
 # Choose your optimizer below
-optimizer = SVRG(model.parameters(), lr=lr, T=50, data_loader=train_loader)
+optimizer = SVRG(model.parameters(), lr=lr, T=100, data_loader=train_loader)
 # optimizer = optim.SGD(model.parameters(), lr=lr)
+
+if args.opt == 'SGD':
+    optimizer = optim.SGD(model.parameters(), lr=lr)
+elif args.opt == 'SVRG':
+    optimizer = SVRG(model.parameters(), lr=lr, data_loader=train_loader, T=args.T)
+elif args.opt == 'HALP':
+    optimizer = HALP(model.parameters(), lr=lr, data_loader=train_loader, T=args.T, mu=args.mu, bits=args.b)
 
 # At any point you can hit Ctrl + C to break out of training early.
 try:
     for epoch in range(1, args.epochs+1):
         epoch_start_time = time.time()
-        train()
+        training_losses = train()
         val_loss = evaluate(val_data)
         print('-' * 89)
         print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
@@ -224,6 +237,35 @@ try:
         else:
             # Anneal the learning rate if no improvement has been seen in the validation dataset.
             lr /= 4.0
+
+        # Create folders and files to save metrics
+        if not os.path.isdir('results'):
+            os.mkdir('results')
+
+        if args.opt == 'SGD':
+            if not os.path.isdir('results/sgd'):
+                os.mkdir('results/sgd')
+            tag = 'results/sgd/lr_{}'.format(args.lr)
+        if args.opt == 'SVRG':
+            if not os.path.isdir('results/svrg'):
+                os.mkdir('results/svrg')
+            tag = 'results/svrg/lr_{}_T_{}'.format(args.lr, args.T)
+        if args.opt == 'HALP':
+            if not os.path.isdir('results/halp'):
+                os.mkdir('results/halp')
+            tag = 'results/halp/lr_{}_T{}_mu_{}_b_{}'.format(args.lr, args.T, args.mu, args.b)
+        training_file = '{}_train.csv'.format(tag)
+        test_file = '{}_test.csv'.format(tag)
+
+        # Save metrics
+        with open(training_file, 'a+') as csvfile:
+            csvwriter = csv.writer(csvfile)
+            for row in training_losses:
+                csvwriter.writerow([row])
+        with open(test_file, 'a+') as csvfile:
+            csvwriter = csv.writer(csvfile)
+            csvwriter.writerow([val_loss])
+
 except KeyboardInterrupt:
     print('-' * 89)
     print('Exiting from training early')
