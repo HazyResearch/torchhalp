@@ -39,7 +39,7 @@ import os
 import argparse
 import csv
 
-from models import *
+from resnet import *
 from utils import progress_bar
 from torch.autograd import Variable
 
@@ -88,14 +88,6 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False,
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-# Choose your optimizer
-if args.opt == 'SGD':
-    ckpt_tag = '{}_{}'.format(args.opt, net)
-elif args.opt == 'SVRG':
-    ckpt_tag = '{}_{}_T_{}'.format(args.opt, net, args.T)
-elif args.opt == 'HALP':
-    ckpt_tag = '{}_{}_T_{}_mu_{}_b_{}'.format(args.opt, net, args.T, args.mu, args.b)
-
 # Model
 if args.resume:
     # Load checkpoint.
@@ -115,11 +107,19 @@ if use_cuda:
     cudnn.benchmark = True
 
 criterion = nn.CrossEntropyLoss()
+
+# ===================================================================
+# THIS IS NEW --- need to call SVRG/HALP and pass data_loader and T
+# and other optional parameters
+# ===================================================================
 if args.opt == 'SGD':
+    ckpt_tag = '{}_{}'.format(args.opt, net)
     optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
 elif args.opt == 'SVRG':
+    ckpt_tag = '{}_{}_T_{}'.format(args.opt, net, args.T)
     optimizer = SVRG(net.parameters(), lr=args.lr, weight_decay=5e-4, data_loader=trainloader, T=args.T)
 elif args.opt == 'HALP':
+    ckpt_tag = '{}_{}_T_{}_mu_{}_b_{}'.format(args.opt, net, args.T, args.mu, args.b)
     optimizer = HALP(net.parameters(), lr=args.lr, weight_decay=5e-4, data_loader=trainloader, T=args.T, mu=args.mu, bits=args.b)
 
 # Training
