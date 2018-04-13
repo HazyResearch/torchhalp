@@ -113,13 +113,13 @@ criterion = nn.CrossEntropyLoss()
 # and other optional parameters
 # ===================================================================
 if args.opt == 'SGD':
-    ckpt_tag = '{}_{}'.format(args.opt, net)
+    ckpt_tag = '{}'.format(args.opt)
     optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
 elif args.opt == 'SVRG':
-    ckpt_tag = '{}_{}_T_{}'.format(args.opt, net, args.T)
+    ckpt_tag = '{}_T_{}'.format(args.opt, args.T)
     optimizer = SVRG(net.parameters(), lr=args.lr, weight_decay=5e-4, data_loader=trainloader, T=args.T)
 elif args.opt == 'HALP':
-    ckpt_tag = '{}_{}_T_{}_mu_{}_b_{}'.format(args.opt, net, args.T, args.mu, args.b)
+    ckpt_tag = '{}_T_{}_mu_{}_b_{}'.format(args.opt, args.T, args.mu, args.b)
     optimizer = HALP(net.parameters(), lr=args.lr, weight_decay=5e-4, data_loader=trainloader, T=args.T, mu=args.mu, bits=args.b)
 
 # Training
@@ -196,15 +196,15 @@ if not os.path.isdir('results'):
 if args.opt == 'SGD':
     if not os.path.isdir('results/sgd'):
         os.mkdir('results/sgd')
-    tag = 'results/sgd/{}_lr_{}'.format(net, args.lr)
+    tag = 'results/sgd/ResNet_lr_{}'.format(args.lr)
 if args.opt == 'SVRG':
     if not os.path.isdir('results/svrg'):
         os.mkdir('results/svrg')
-    tag = 'results/svrg/{}_lr_{}_T_{}_l2_5e-4'.format(net, args.lr, args.T)
+    tag = 'results/svrg/ResNet_lr_{}_T_{}_l2_5e-4'.format(args.lr, args.T)
 if args.opt == 'HALP':
     if not os.path.isdir('results/halp'):
         os.mkdir('results/halp')
-    tag = 'results/halp/{}_lr_{}_T{}_mu_{}_b_{}_l2_5e-4'.format(net, args.lr, args.T, args.mu, args.b)
+    tag = 'results/halp/ResNet_lr_{}_T{}_mu_{}_b_{}_l2_5e-4'.format(args.lr, args.T, args.mu, args.b)
 training_file = '{}_train.csv'.format(tag)
 test_file = '{}_test.csv'.format(tag)
 
