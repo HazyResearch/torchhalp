@@ -4,7 +4,7 @@ import torch
 from torch.autograd import Variable
 
 from examples import regression
-from halp.optim import SVRG
+from torchhalp.optim import SVRG
 from utils import *
 
 
