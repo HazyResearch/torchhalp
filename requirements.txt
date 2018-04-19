@@ -36,7 +36,6 @@ pathlib2==2.3.0
 pexpect==4.4.0
 pickleshare==0.7.4
 Pillow==5.1.0
-pkg-resources==0.0.0
 pluggy==0.6.0
 prompt-toolkit==1.0.15
 ptyprocess==0.5.2
@@ -61,7 +60,7 @@ subprocess32==3.2.7
 terminado==0.8.1
 testpath==0.3.1
 torch==0.3.1
-torchhalp==0.1
+torchhalp==0.0.0
 torchvision==0.2.0
 tornado==5.0.2
 traitlets==4.3.2
