@@ -11,6 +11,7 @@ enum34==1.1.6
 funcsigs==1.0.2
 functools32==3.2.3.post2
 futures==3.2.0
+halp==0.1
 html5lib==1.0.1
 ipykernel==4.8.2
 ipython==5.6.0
