@@ -11,7 +11,6 @@ enum34==1.1.6
 funcsigs==1.0.2
 functools32==3.2.3.post2
 futures==3.2.0
-halp==0.1
 html5lib==1.0.1
 ipykernel==4.8.2
 ipython==5.6.0
@@ -62,6 +61,7 @@ subprocess32==3.2.7
 terminado==0.8.1
 testpath==0.3.1
 torch==0.3.1
+torchhalp==0.1
 torchvision==0.2.0
 tornado==5.0.2
 traitlets==4.3.2

@@ -9,7 +9,7 @@ from sklearn import linear_model, datasets
 
 from utils import SynthDataset
 
-from halp.optim import SVRG, HALP
+from torchhalp.optim import SVRG, HALP
 
 import matplotlib
 matplotlib.use('pdf') # uncomment to run on raiders9
