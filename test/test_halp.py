@@ -5,9 +5,7 @@ from torch.autograd import Variable
 
 from utils import *
 
-import sys
-sys.path.append('..')
-from optim import HALP
+from torchhalp.optim import HALP
 from examples import regression
 
 np.random.seed(0xdeadbeef)

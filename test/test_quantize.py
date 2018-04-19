@@ -5,7 +5,7 @@ import numpy as np
 
 from utils import iter_indices
 
-import quantize
+import torchhalp.quantize
 
 def check_saturation(m1, scale_factor, bits):
 	min_val = -scale_factor*math.pow(2, bits-1)

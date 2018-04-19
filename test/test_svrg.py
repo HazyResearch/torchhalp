@@ -1,15 +1,12 @@
-import pytest
 import numpy as np
+import pytest
 import torch
 from torch.autograd import Variable
 
+from examples import regression
+from torchhalp.optim import SVRG
 from utils import *
 
-import sys
-sys.path.append('..')
-from optim import SVRG
-
-from examples import regression
 
 np.random.seed(0xdeadbeef)
 
