@@ -5,11 +5,13 @@ This repo contains a PyTorch implementation of the HALP optimizer from the paper
 ### Getting Started
 
 ```
-% git clone git@github.com:HazyResearch/torchhalp.git
-% virtualenv venv
-% source venv/bin/activate
-% pip install -r requirements.txt
-% pytest test/ -v
+git clone git@github.com:HazyResearch/torchhalp.git && cd torchhalp
+virtualenv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python setup.py install
+pytest test/ -v
+>>>>>>> replicate
 ```
 
 ### Use in Other PyTorch Code
@@ -32,6 +34,8 @@ def closure(data=data, target=target):
  ```
 
 ###  Notes
+
+* This is meant to be a simulation to evaluate the effect of HALP on accuracy, but as a simulation, this implementation adds overhead with quantization. 
 
 * The SVRG and HALP optimizers take two additional arguments as compared to the SGD optimizer, `T` and `data_loader`. `T` indicates how often the full gradient over the entire dataset, a key step in the SVRG algorithm, is taken, where `T` is the number of batches in between updating the full gradient. The `data_loader` argument requires a PyTorch [DataLoader](http://pytorch.org/docs/master/data.html#torch.utils.data.DataLoader), such that the gradient over the full dataset can be initiated internally in the optimizer. The HALP optimizer has the additional arguments of `mu`, `bits`, and `unbiased` which affect the quantization, where `mu` contributes to the dynamic rescaling, `bits` is the number of bits used for the quantized numbers, and `unbiased` indicates stochastic rounding is used.
 
