@@ -1,2 +1,2 @@
-from svrg import SVRG 
-from halp import HALP
+from halp.optim.svrg import SVRG
+from halp.optim.halp import HALP

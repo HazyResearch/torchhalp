@@ -4,7 +4,7 @@ from torch.autograd import Variable
 import copy, logging
 import math
 
-import halp.qasdfasduantize
+import halp.quantize
 
 class HALP(torch.optim.SGD):
     """Implements high-accuracy low-precision algorithm.
