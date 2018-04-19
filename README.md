@@ -11,7 +11,6 @@ source venv/bin/activate
 pip install -r requirements.txt
 python setup.py install
 pytest test/ -v
->>>>>>> replicate
 ```
 
 ### Use in Other PyTorch Code
