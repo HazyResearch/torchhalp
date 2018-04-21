@@ -6,8 +6,6 @@ import torch
 
 def quantize_(input, scale_factor, bits, biased=False):
     assert bits >= 1, bits
-    if bits == 1:
-        return torch.sign(input) - 1
     bound = math.pow(2.0, bits-1)
     min_val = - bound
     max_val = bound - 1

@@ -18,10 +18,8 @@ def baseline_svrg(x, y, w, lr, T=1, K=1, calc_gradient=None):
     for k in range(K):
         w_prev = w
         full_grad = calc_gradient(x, y, w, avg=True)
-        print T
         for t in range(T):
             xi, yi = x[[t],:], y[t:t+1]
-            print xi
             w_grad = calc_gradient(xi, yi, w)
             w_prev_grad = calc_gradient(xi, yi, w_prev)
             adjusted_grad = w_grad - w_prev_grad + full_grad

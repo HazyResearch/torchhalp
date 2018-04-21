@@ -19,21 +19,21 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Linear regression')
     parser.add_argument('--epochs', type=int, default=10, metavar='N',
                         help='number of epochs to train (default: 10)')
-    parser.add_argument('--lr', type=float, default= 0.01, metavar='LR',
-                        help='learning rate (default: 0.01)')
+    parser.add_argument('--lr', type=float, default= 0.001, metavar='LR',
+                        help='learning rate (default: 0.001)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
     parser.add_argument('--T', type=int, default=200, metavar='T',
                         help='how many iterations between taking full gradient')
-    parser.add_argument('--mu', default=1, type=float,
+    parser.add_argument('--mu', default=4, type=float,
                         help='mu, only used for HALP')
     parser.add_argument('--b', default=8, type=int,
                         help='Number of bits to use, only used for HALP')
     parser.add_argument('--n', type=int, default=100, metavar='NS',
                         help='number of samples')
-    parser.add_argument('--num-features', type=int, default=4, metavar='F',
+    parser.add_argument('--num-features', type=int, default=5, metavar='F',
                         help='number of features')
     parser.add_argument('--sgd', action='store_true',
                         help='Runs stochastic gradient descent')
@@ -57,10 +57,9 @@ def add_plot(iters, dist, label, log_y=True, T=None):
 def step_decay_lr_scheduler(optimizer, epoch, lr_decay=0.1, lr_decay_epoch=7):
     """Decay learning rate by a factor of lr_decay every lr_decay_epoch epochs"""
     if epoch % lr_decay_epoch:
-        return optimizer
+        return
     for param_group in optimizer.param_groups:
         param_group['lr'] *= lr_decay
-    return optimizer
 
 def main():
     args = parse_args()
@@ -79,7 +78,8 @@ def main():
 
     # Make synthetic dataset with sklearn
     X, Y = datasets.make_regression(n_samples=n,
-                                    n_features=n_features)
+                                    n_features=n_features,
+                                    random_state=0xc0ffee)
 
     # Solve for optimal solution
     w_opt, _, _, _= np.linalg.lstsq(X, Y, rcond=None)
@@ -88,9 +88,9 @@ def main():
     X = torch.from_numpy(X).float()
     Y = torch.from_numpy(Y).float().view(-1,1)
     synth_dataset = SynthDataset(X, Y)
-    train_loader = torch.utils.data.DataLoader(synth_dataset)
+    train_loader = torch.utils.data.DataLoader(synth_dataset, shuffle=True)
 
-    loss = torch.nn.MSELoss(size_average=True)
+    loss = torch.nn.MSELoss()
 
     def build_model():
         # Create model
@@ -108,8 +108,7 @@ def main():
         for e in range(num_epochs):
 
             for i, (data, target) in enumerate(train_loader):
-
-                # We need to add this function to models when we want to use SVRG
+                # We need to add this function to models when we want to use SVRG or HALP
                 def closure(data=data, target=target):
                     data = Variable(data, requires_grad=False)
                     target = Variable(target, requires_grad=False)
@@ -120,6 +119,10 @@ def main():
                     cost.backward()
                     return cost
 
+                # We need to zero the optimizer for SGD
+                # (already done internally for SVRG and HALP)
+                optimizer.zero_grad()
+
                 # This is the key line to perform the optimizer step
                 # We don't need to call forward/backward explicitly (in addition to in the closure)
                 # since the optimizer will call the closure
@@ -129,12 +132,12 @@ def main():
                 w = np.asarray([p.data.cpu().numpy() for p in list(model.parameters())])
                 dist = np.linalg.norm(w-w_opt)
                 dist_to_optimum.append(dist)
-                if iters % T == 0:
+                if iters % n == 0:
                     print("Iteration = %d, Dist_to_opt = %s" % (iters , dist))
                 iters += 1
 
             if lr_decay:
-                step_decay_lr_scheduler(optimizer, e, lr_decay=0.1, lr_decay_epoch=15)
+                step_decay_lr_scheduler(optimizer, e, lr_decay=0.1, lr_decay_epoch=200)
 
         return dist_to_optimum
 
@@ -142,7 +145,7 @@ def main():
     if args.sgd or args.all:
         model = build_model()
         opt = optim.SGD(model.parameters(), lr=args.lr)
-        dist = train(opt, lr_decay=True)
+        dist = train(opt, lr_decay=False)
         add_plot(num_epochs*len(train_loader), dist, label='SGD')
 
     if args.svrg or args.all:
