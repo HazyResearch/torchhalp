@@ -14,16 +14,20 @@ np.random.seed(0xdeadbeef)
 # SVRG implementations
 #========================================================================================
 
-def baseline_svrg(x, y, w, lr, T=1, K=1, calc_gradient=None):
+
+def baseline_svrg(x, y, w, lr, n, T=1, K=1, calc_gradient=None):
+    iters = 0
     for k in range(K):
-        w_prev = w
-        full_grad = calc_gradient(x, y, w, avg=True)
-        for t in range(T):
-            xi, yi = x[[t],:], y[t:t+1]
+        for idx in range(n):
+            if iters % T == 0:
+                w_prev = w
+                full_grad = calc_gradient(x, y, w, avg=True)
+            xi, yi = x[[idx],:], y[idx:idx+1]
             w_grad = calc_gradient(xi, yi, w)
             w_prev_grad = calc_gradient(xi, yi, w_prev)
             adjusted_grad = w_grad - w_prev_grad + full_grad
             w = w - (lr*adjusted_grad)
+            iters += 1
     return w
 
 def pytorch_svrg(x, y, w, lr, T, K=1, n_features=None, n_classes=1):
@@ -61,24 +65,33 @@ def pytorch_svrg(x, y, w, lr, T, K=1, n_features=None, n_classes=1):
 # Tests
 #========================================================================================
 
-@pytest.mark.parametrize("n_samples,n_features,lr,K",
+@pytest.mark.parametrize("n_samples,n_features,lr,K,T",
 [
-    (1,   1,   1, 1),
-    (1,   4, 0.1, 1),
-    (1,   4, 0.1, 2),
-    (10,  4, 0.1, 1),
-    (10,  4, 0.1, 1),
-    (10, 10, 0.1, 1),
-    (10, 10, 0.5, 1),
-    (10, 10, 0.5, 10)
+    (1,   1,   1, 1, 1),
+    (1,   4, 0.1, 1, 1),
+    (1,   4, 0.1, 2, 1),
+    (10,  4, 0.1, 1, 1),
+    (10, 10, 0.1, 1, 1),
+    (10, 10, 0.5, 1, 1),
+    (10, 10, 0.5, 2, 1),
+    (1,   1,   1, 1, 2),
+    (1,   4, 0.1, 1, 2),
+    (1,   4, 0.1, 2, 2),
+    (10,  4, 0.1, 1, 2),
+    (10, 10, 0.1, 1, 10),
+    (10, 10, 0.5, 2, 10),
+    (10, 10, 0.1, 1, 20),
+    (10, 10, 0.5, 1, 20),
+    (10, 10, 0.5, 2, 20)
 ])
-def test_linear_regress(n_samples, n_features, lr, K):
+def test_linear_regress(n_samples, n_features, lr, K, T):
     x = np.random.rand(n_samples, n_features)
     y = np.random.uniform(0,1, size=(n_samples,))
     w = np.random.uniform(0, 0.1, (1, n_features))
 
-    np_value = baseline_svrg(x, y, w, lr, T=n_samples, K=K, calc_gradient=linear_grad)
-    pytorch_value = pytorch_svrg(x, y, w, lr, T=n_samples, K=K, n_features=n_features)
+    print "K", K
+    np_value = baseline_svrg(x, y, w, lr, n=n_samples, T=T, K=K, calc_gradient=linear_grad)
+    pytorch_value = pytorch_svrg(x, y, w, lr, T=T, K=K, n_features=n_features)
     np.testing.assert_allclose(np_value, pytorch_value, rtol=1e-4)
 
 @pytest.mark.parametrize("n_samples,n_features,n_classes,lr,K",
@@ -96,7 +109,7 @@ def test_logistic_regress(n_samples, n_features, n_classes, lr, K):
     y = np.random.randint(0, n_classes, size=(n_samples,))
     w = np.random.uniform(0, 0.1, (n_classes, n_features))
 
-    np_value = baseline_svrg(x, y, w, lr, T=n_samples, K=K, calc_gradient=logistic_grad)
+    np_value = baseline_svrg(x, y, w, lr, n=n_samples, T=n_samples, K=K, calc_gradient=logistic_grad)
     pytorch_value = pytorch_svrg(x, y, w, lr, T=n_samples, K=K, n_features=n_features,
                                  n_classes=n_classes)
     np.testing.assert_allclose(np_value, pytorch_value, rtol=1e-4)

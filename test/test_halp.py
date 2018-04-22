@@ -32,21 +32,24 @@ def dequantize(vect, scale_factor):
 # HALP implementations
 #========================================================================================
 
-def baseline_halp(x, y, w, lr, b, mu, T=1, K=1, calc_gradient=None):
+def baseline_halp(x, y, w, lr, b, mu, n, T=1, K=1, calc_gradient=None):
     s_k = 1.0 # s_k needs an initial value to complete w addition
     z = np.zeros(w.shape)
+    iters = 0
     for k in range(K):
-        # Recenter
-        w = w + z # w is full precision
-        g_k = calc_gradient(x, y, w, avg=True)
-        # Rescale
-        s_k = float(np.linalg.norm(g_k)) / (mu * (2**(b-1) - 1))
-        z = np.zeros(w.shape)
-        for t in range(T):
-            xi, yi = x[[t],:], y[t:t+1]
+        for idx in range(n):
+            if iters % T == 0:
+                # Recenter
+                w = w + z # w is full precision
+                g_k = calc_gradient(x, y, w, avg=True)
+                # Rescale
+                s_k = float(np.linalg.norm(g_k)) / (mu * (2**(b-1) - 1))
+                z = np.zeros(w.shape)
+            xi, yi = x[[idx],:], y[idx:idx+1]
             z = z - (lr*(calc_gradient(xi, yi, w + z) - calc_gradient(xi, yi, w) + g_k))
             z = quantize(z, b, s_k, biased=True)
             z = dequantize(z, s_k)
+            iters += 1
     return w + z
 
 
@@ -84,26 +87,33 @@ def pytorch_halp(x, y, w, lr, b, mu, T=1, K=1, n_features=None, n_classes=1):
 # Tests
 #========================================================================================
 
-@pytest.mark.parametrize("n_samples,n_features,lr,K,b,mu",
+@pytest.mark.parametrize("n_samples,n_features,lr,K,b,mu,T",
 [
-    (1,   1,   1,  1,  8,   1),
-    (1,   4, 0.1,  1,  8,   1),
-    (1,   4, 0.1,  2,  8,   1),
-    (10,  4, 0.1,  1,  8,   1),
-    (10,  4, 0.1,  1,  8,   1),
-    (10, 10, 0.1,  1,  8,   1),
-    (10, 10, 0.5,  1,  8,   1),
-    (10, 10, 0.5, 10,  8,   1),
-    (10, 10, 0.5, 10,  8, 0.1),
-    (10, 10, 0.5, 10, 16, 0.1),
-    (5,  10, 0.5, 10, 16,   1)
+    (1,   1,   1,  1,  8,   1, 1),
+    (1,   4, 0.1,  1,  8,   1, 1),
+    (1,   4, 0.1,  4,  8,   1, 2),
+    (10,  4, 0.1,  1,  8,   1, 10),
+    (10,  4, 0.1,  1,  8,   1, 10),
+    (10, 10, 0.1,  1,  8,   1, 10),
+    (10, 10, 0.5,  1,  8,   1, 10),
+    (10, 10, 0.5, 10,  8,   1, 10),
+    (10, 10, 0.5, 10,  8, 0.1, 10),
+    (10, 10, 0.5, 10, 16, 0.1, 10),
+    (5,  10, 0.5, 10, 16,   1, 5),
+    (10,  4, 0.1,  1,  8,   1, 20),
+    (10,  4, 0.1,  1,  8,   1, 20),
+    (10, 10, 0.1,  1,  8,   1, 20),
+    (10, 10, 0.5,  1,  8,   1, 20),
+    (10, 10, 0.5, 10,  8,   1, 20),
+    (10, 10, 0.5, 10,  8, 0.1, 20),
+    (10, 10, 0.5, 10, 16, 0.1, 20)
 ])
-def test_linear_regress(n_samples, n_features, lr, K, b, mu):
+def test_linear_regress(n_samples, n_features, lr, K, b, mu, T):
     x = np.random.rand(n_samples, n_features)
     y = np.random.uniform(0,1, size=(n_samples,))
-    w = np.random.uniform(0, 0.1, (1, n_features))
-    np_value = baseline_halp(x, y, w, lr, b, mu, T=n_samples, K=K, calc_gradient=linear_grad)
-    pytorch_value = pytorch_halp(x, y, w, lr, b, mu, T=n_samples, K=K, n_features=n_features)
+    w = np.random.uniform(0,0.1, (1, n_features))
+    np_value = baseline_halp(x, y, w, lr, b, mu, n=n_samples, T=T, K=K, calc_gradient=linear_grad)
+    pytorch_value = pytorch_halp(x, y, w, lr, b, mu, T=T, K=K, n_features=n_features)
     np.testing.assert_allclose(np_value, pytorch_value, rtol=1e-4)
 
 @pytest.mark.parametrize("n_samples,n_features,n_classes,lr,K,b,mu",
@@ -124,7 +134,7 @@ def test_logistic_regress(n_samples, n_features, n_classes, lr, K, b, mu):
     x = np.random.rand(n_samples, n_features)
     y = np.random.randint(0, n_classes, size=(n_samples,))
     w = np.random.uniform(0, 0.1, (n_classes, n_features))
-    np_value = baseline_halp(x, y, w, lr, b, mu, T=n_samples, K=K, calc_gradient=logistic_grad)
+    np_value = baseline_halp(x, y, w, lr, b, mu, n=n_samples, T=n_samples, K=K, calc_gradient=logistic_grad)
     pytorch_value = pytorch_halp(x, y, w, lr, b, mu, T=n_samples, K=K, n_features=n_features,
                                  n_classes=n_classes)
     np.testing.assert_allclose(np_value, pytorch_value, rtol=1e-4)
