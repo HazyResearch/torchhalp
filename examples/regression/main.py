@@ -29,7 +29,7 @@ def parse_args():
                         help='how many iterations between taking full gradient')
     parser.add_argument('--mu', default=4, type=float,
                         help='mu, only used for HALP')
-    parser.add_argument('--b', default=8, type=int,
+    parser.add_argument('--bits', '-b', default=8, type=int,
                         help='Number of bits to use, only used for HALP')
     parser.add_argument('--n', type=int, default=100, metavar='NS',
                         help='number of samples')

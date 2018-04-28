@@ -1,6 +1,6 @@
 High-Accuracy Low-Precision Training
 ====================================
-This repo contains a PyTorch implementation of the HALP optimizer from the paper [High-Accuracy Low-Precision Training](https://arxiv.org/abs/1803.03383) as well as a full-precision SVRG optimizer.
+This repo contains a PyTorch implementation of the HALP optimizer from the paper [High-Accuracy Low-Precision Training](https://arxiv.org/abs/1803.03383) as well as a full-precision SVRG optimizer. It is designed for explanatory purposes rather than high-performance.
 
 ### Getting Started
 
@@ -12,6 +12,8 @@ pip install -r requirements.txt
 python setup.py install
 pytest test/ -v
 ```
+
+This only supports PyTorch version 0.3.1 or lower.
 
 ### Use in Other PyTorch Code
 To add the optimizers to your existing PyTorch code:
@@ -31,13 +33,18 @@ def closure(data=data, target=target):
     loss.backward()
     return loss
  ```
+4. Pass the closure method to the step function when you call `optimizer.step(closure)`.
+
+### Examples
+
+Included are examples for [linear regression](examples/regression) and [ResNet-18 on CIFAR-10](examples/cifar10).
 
 ###  Notes
 
-* This is meant to be a simulation to evaluate the effect of HALP on accuracy, but as a simulation, this implementation adds overhead with quantization. 
+* This is meant to be a simulation to evaluate the effect of HALP on accuracy, but as a simulation, this implementation adds overhead with quantization.
 
-* The SVRG and HALP optimizers take two additional arguments as compared to the SGD optimizer, `T` and `data_loader`. `T` indicates how often the full gradient over the entire dataset, a key step in the SVRG algorithm, is taken, where `T` is the number of batches in between updating the full gradient. The `data_loader` argument requires a PyTorch [DataLoader](http://pytorch.org/docs/master/data.html#torch.utils.data.DataLoader), such that the gradient over the full dataset can be initiated internally in the optimizer. The HALP optimizer has the additional arguments of `mu`, `bits`, and `unbiased` which affect the quantization, where `mu` contributes to the dynamic rescaling, `bits` is the number of bits used for the quantized numbers, and `unbiased` indicates stochastic rounding is used.
+* The SVRG and HALP optimizers take two additional arguments as compared to the SGD optimizer, `T` and `data_loader`. `T` indicates how often the full gradient over the entire dataset, a key step in the SVRG algorithm, is taken, where `T` is the number of batches in between updating the full gradient. The `data_loader` argument requires a PyTorch [DataLoader](http://pytorch.org/docs/master/data.html#torch.utils.data.DataLoader), such that the gradient over the full dataset can be initiated internally in the optimizer. The HALP optimizer has the additional arguments of `mu`, `bits`, and `unbiased` which affect the quantization, where `mu` contributes to the dynamic rescaling, `bits` is the number of bits used for the quantized numbers, and `unbiased` indicates whether stochastic rounding is used.
 
 * Currently, the SVRG and HALP optimizers don’t support multiple per-parameter options and parameter groups.
 
-* Due to the structure of the closure method and the optimizers self-containing the copying structure of SVRG and HALP, stateful LSTMs in which we reuse the hidden layer across batches are not currently supported. However, we can still use learned hidden layers or stateless LSTMs.
+* Stateful LSTMs are not supported due to the optimizer's self-contained nature. However, we can still use learned hidden layers or stateless LSTMs.
