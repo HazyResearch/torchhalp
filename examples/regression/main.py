@@ -156,7 +156,7 @@ def main():
 
     if args.halp or args.all:
         model = build_model()
-        opt = HALP(model.parameters(), T=T, data_loader=train_loader, lr=args.lr, mu=args.mu, bits=args.b)
+        opt = HALP(model.parameters(), T=T, data_loader=train_loader, lr=args.lr, mu=args.mu, bits=args.bits)
         dist = train(opt)
         add_plot(num_epochs*len(train_loader), dist, label='HALP', T=T)
 

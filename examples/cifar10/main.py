@@ -117,8 +117,8 @@ elif args.opt == 'SVRG':
     ckpt_tag = '{}_T_{}'.format(args.opt, args.T)
     optimizer = SVRG(net.parameters(), lr=args.lr, weight_decay=5e-4, data_loader=trainloader, T=args.T)
 elif args.opt == 'HALP':
-    ckpt_tag = '{}_T_{}_mu_{}_b_{}'.format(args.opt, args.T, args.mu, args.b)
-    optimizer = HALP(net.parameters(), lr=args.lr, weight_decay=5e-4, data_loader=trainloader, T=args.T, mu=args.mu, bits=args.b)
+    ckpt_tag = '{}_T_{}_mu_{}_b_{}'.format(args.opt, args.T, args.mu, args.bits)
+    optimizer = HALP(net.parameters(), lr=args.lr, weight_decay=5e-4, data_loader=trainloader, T=args.T, mu=args.mu, bits=args.bits)
 
 # Training
 def train(epoch):
@@ -202,7 +202,7 @@ if args.opt == 'SVRG':
 if args.opt == 'HALP':
     if not os.path.isdir('results/halp'):
         os.mkdir('results/halp')
-    tag = 'results/halp/ResNet_lr_{}_T{}_mu_{}_b_{}_l2_5e-4'.format(args.lr, args.T, args.mu, args.b)
+    tag = 'results/halp/ResNet_lr_{}_T{}_mu_{}_b_{}_l2_5e-4'.format(args.lr, args.T, args.mu, args.bits)
 training_file = '{}_train.csv'.format(tag)
 test_file = '{}_test.csv'.format(tag)
 
