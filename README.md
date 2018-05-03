@@ -2,7 +2,7 @@ High-Accuracy Low-Precision Training
 ====================================
 This repo contains a PyTorch implementation of the HALP optimizer from the paper [High-Accuracy Low-Precision Training](https://arxiv.org/abs/1803.03383) as well as a full-precision SVRG optimizer. It is designed for explanatory purposes rather than high-performance.
 
-### Getting Started
+## Getting Started
 
 ```
 git clone git@github.com:HazyResearch/torchhalp.git && cd torchhalp
@@ -15,7 +15,7 @@ pytest test/ -v
 
 This only supports PyTorch version 0.3.1 or lower.
 
-### Use in Other PyTorch Code
+## Use in Other PyTorch Code
 To add the optimizers to your existing PyTorch code:
 
 1. Import the optimizer
@@ -35,11 +35,11 @@ def closure(data=data, target=target):
  ```
 4. Pass the closure method to the step function when you call `optimizer.step(closure)`.
 
-### Examples
+## Examples
 
-Included are examples for [linear regression](examples/regression) and [ResNet-18 on CIFAR-10](examples/cifar10).
+We include examples for [linear regression](examples/regression) and [ResNet-18 on CIFAR-10](examples/cifar10).
 
-###  Notes
+##  Notes
 
 * This is meant to be a simulation to evaluate the effect of HALP on accuracy, but as a simulation, this implementation adds overhead with quantization.
 
